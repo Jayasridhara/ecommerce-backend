@@ -1,0 +1,39 @@
+{
+  "name": "ecommerce",
+  "version": "1.0.0",
+  "description": "\"ecommerce\"",
+  "keywords": [
+    "\"keyword\""
+  ],
+  "homepage": "https://github.com/Jayasridhara/ecommerce-backend#readme",
+  "bugs": {
+    "url": "https://github.com/Jayasridhara/ecommerce-backend/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Jayasridhara/ecommerce-backend.git"
+  },
+  "license": "ISC",
+  "author": "\"jayasri\"",
+  "type": "commonjs",
+  "main": "server.js",
+  "scripts": {
+    "test": "\"test\"",
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "@sendgrid/mail": "^8.1.6",
+    "bcrypt": "^6.0.0",
+    "body-parser": "^2.2.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.19.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}
