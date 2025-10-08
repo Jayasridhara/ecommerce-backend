@@ -1,4 +1,4 @@
-const mongoose=require('mongoose');
+const mongoose = require("mongoose");
 
 const productSchema = new mongoose.Schema(
   {
@@ -10,14 +10,24 @@ const productSchema = new mongoose.Schema(
     description: { type: String },
     image: { type: String },
     isActive: { type: Boolean, default: true },
-
-    // optional: to track which seller added it
     seller: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
     },
+    stock: { type: Number, default: 0 },           // how many items in stock
+    category: { type: String },                     // perhaps a more formal category
+    salesCount: { type: Number, default: 0 },       // number of times sold (for reports)
+    // You can track reviews, or a reviews subdocument
+    reviews: [
+      {
+        user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+        rating: Number,
+        comment: String,
+        createdAt: Date,
+      },
+    ],
   },
   { timestamps: true }
 );
 
-module.exports=mongoose.model('Product',productSchema,'products')
+module.exports = mongoose.model("Product", productSchema, "products");

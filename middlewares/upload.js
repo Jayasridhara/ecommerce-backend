@@ -1,37 +1,27 @@
+
+
+const cloudinary = require('cloudinary').v2;
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
+const { CLOUD_NAME, CLOUD_API_KEY, CLOUD_API_SECRET } = require('../utils/config');
 
-// Ensure directory exists
-const uploadPath = path.join(__dirname, '../mnt/uploads');
-if (!fs.existsSync(uploadPath)) {
-  fs.mkdirSync(uploadPath, { recursive: true });
-}
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: CLOUD_NAME,
+  api_key: CLOUD_API_KEY,
+  api_secret: CLOUD_API_SECRET,
+});
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadPath);
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    const name = file.fieldname + "-" + Date.now() + ext;
-    cb(null, name);
+// Configure Multer to use Cloudinary storage
+const storage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: 'ecommerce-products', // folder name in your Cloudinary account
+    allowed_formats: ['jpg', 'jpeg', 'png', 'gif'],
+    transformation: [{ width: 800, height: 800, crop: 'limit' }], // optional resize
   },
 });
 
-const fileFilter = (req, file, cb) => {
-  const allowed = /jpeg|jpg|png|gif/;
-  const ext = path.extname(file.originalname).toLowerCase();
-  const mimetype = allowed.test(file.mimetype);
-  const extname = allowed.test(ext);
-  if (mimetype && extname) cb(null, true);
-  else cb(new Error("Only image files are allowed!"), false);
-};
-
-const upload = multer({
-  storage,
-  fileFilter,
-  limits: { fileSize: 5 * 1024 * 1024 },
-});
+const upload = multer({ storage });
 
 module.exports = upload;

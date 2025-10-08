@@ -1,5 +1,5 @@
 const express = require('express');
-const { getAllProducts, getProductById, createProduct, updateProduct, deleteProduct, getSellerProducts } = require('../controller/productController');
+const { getAllProducts, getProductById, createProduct, updateProduct, deleteProduct, getSellerProducts, getFilteredProducts, getProductReviews, addOrUpdateReview } = require('../controller/productController');
 const { isAuthenticated, allowUsers } = require('../middlewares/auth');
 const upload = require('../middlewares/upload');
 const Product = require('../models/Product');
@@ -10,7 +10,10 @@ const productRouter = express.Router();
 
 // Public routes
 productRouter.get("/", getAllProducts);
+productRouter.get("/", getFilteredProducts);
 productRouter.get("/:id", getProductById);
+productRouter.get("/:id/reviews", getProductReviews);
+
 
 productRouter.post(
   "/:id/upload-image",
@@ -30,17 +33,14 @@ productRouter.post(
         return res.status(403).json({ success: false, message: "Unauthorized: not your product" });
       }
 
-      if (!req.file) {
+      if (!req.file || !req.file.path) {
         return res.status(400).json({ success: false, message: "No image uploaded" });
       }
 
-      // Generate public URL for image
-      const imageUrl = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
-
-      // Update product with image link
-      product.image = imageUrl;
+      // Cloudinary returns `req.file.path` as the image URL
+      product.image = req.file.path;
       await product.save();
-
+      
       res.json({
         success: true,
         message: "Product image uploaded successfully",
@@ -53,10 +53,12 @@ productRouter.post(
 );
 
 // Seller-protected routes
+productRouter.post("/:id/reviews", isAuthenticated, addOrUpdateReview);
 productRouter.post("/", isAuthenticated,allowUsers(['seller']), createProduct);
 productRouter.put("/:id", isAuthenticated,allowUsers(['seller']), updateProduct);
 productRouter.delete("/:id", isAuthenticated,allowUsers(['seller']), deleteProduct);
-productRouter.get("/seller/my-products", isAuthenticated,allowUsers(['seller']), getSellerProducts);
+productRouter.get("/seller", isAuthenticated,allowUsers(['seller']), getSellerProducts);
+
 
 module.exports=productRouter;
 

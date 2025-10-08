@@ -45,6 +45,7 @@ const getAllProducts = async (req, res) => {
 const getProductById = async (req, res) => {
   try {
     const { id } = req.params;
+    console.log("id;",id)
     const product = await Product.findById(id);
 
     if (!product) return res.status(404).json({ message: "Product not found" });
@@ -59,7 +60,6 @@ const getProductById = async (req, res) => {
 const createProduct = async (req, res) => {
   try {
     const { name, price, rating, color, productType, description, image } = req.body;
-    const imageurl="/mnt/uploads/"+image;
     const newProduct = new Product({
       name,
       price,
@@ -67,7 +67,7 @@ const createProduct = async (req, res) => {
       color,
       productType,
       description,
-      image:imageurl,
+      image,
       seller: req.userId, // optional
     });
 
@@ -108,16 +108,105 @@ const createProduct = async (req, res) => {
   }
 };
 
-// ✅ Get all products posted by a seller
- const getSellerProducts = async (req, res) => {
+const getFilteredProducts = async (req, res) => {
   try {
-    const products = await Product.find({ seller: req.userId }).sort({ createdAt: -1 });
+    const { type, color, minPrice, maxPrice, rating, category, seller, isActive } =
+      req.query;
+
+    const filter = {};  
+
+    if (type) filter.productType = type;
+    if (color) filter.color = color;
+    if (category) filter.category = category;
+    if (seller) filter.seller = seller;
+    if (isActive != null) filter.isActive = isActive === "true";
+
+    if (minPrice != null || maxPrice != null) {
+      filter.price = {};
+      if (minPrice != null) filter.price.$gte = parseFloat(minPrice);
+      if (maxPrice != null) filter.price.$lte = parseFloat(maxPrice);
+    }
+
+    if (rating != null) {
+      // products with rating ≥ given rating
+      filter.rating = { $gte: parseFloat(rating) };
+    }
+
+    const products = await Product.find(filter).sort({ createdAt: -1 });
     res.status(200).json({ products });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
+// ✅ Get all products posted by a seller
+const getSellerProducts = async (req, res) => {
+  try {
+    const products = await Product.find({ seller: req.userId }).sort({ createdAt: -1 });
+    res.status(200).json({
+      success: true,
+      count: products.length,
+      products
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+const getProductReviews = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const product = await Product.findById(id).populate("reviews.user", "name email");
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+    res.status(200).json({ reviews: product.reviews });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};  
+
+const addOrUpdateReview = async (req, res) => {
+  try {
+    const { id } = req.params; // product id
+    const { rating, comment } = req.body;
+    const userId = req.userId;
+
+    const product = await Product.findById(id);
+    if (!product) return res.status(404).json({ message: "Product not found" });
+
+    // Check if user already reviewed
+    const existingReview = product.reviews.find((r) =>
+      r.user.toString() === userId.toString()
+    );
+    if (existingReview) {
+      existingReview.rating = rating;
+      existingReview.comment = comment;
+      existingReview.createdAt = Date.now();
+    } else {
+      product.reviews.push({
+        user: userId,
+        rating,
+        comment,
+        createdAt: Date.now(),
+      });
+    }
+
+    // Recalculate average rating
+    const total = product.reviews.reduce((acc, r) => acc + r.rating, 0);
+    product.rating = total / product.reviews.length;
+
+    await product.save();
+
+    res.status(200).json({ message: "Review added/updated", product });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
 module.exports={
-    getAllProducts,getProductById,createProduct,updateProduct,deleteProduct,getSellerProducts
+    getAllProducts,getProductById,createProduct,updateProduct,deleteProduct,getSellerProducts,getProductReviews,addOrUpdateReview,getFilteredProducts
 }
+

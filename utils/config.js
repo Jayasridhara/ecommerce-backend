@@ -7,6 +7,9 @@ const NODE_ENV = process.env.NODE_ENV || 'development';
 const EMAIL_PASS = process.env.EMAIL_PASS;
 const EMAIL_USER = process.env.EMAIL_USER;
 const SENDGRID_API_KEY= process.env.SENDGRID_API_KEY;
+const CLOUD_NAME=process.env.CLOUD_NAME;
+const CLOUD_API_KEY=process.env.CLOUD_API_KEY
+const CLOUD_API_SECRET=process.env.CLOUD_API_SECRET
 module.exports = {
     MONGODB_URI,
     PORT,
@@ -14,6 +17,9 @@ module.exports = {
     NODE_ENV,
     EMAIL_PASS,
     EMAIL_USER,
-    SENDGRID_API_KEY
+    SENDGRID_API_KEY,
+    CLOUD_NAME,
+    CLOUD_API_KEY,
+    CLOUD_API_SECRET
 
 }
