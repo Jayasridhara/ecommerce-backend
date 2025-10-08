@@ -14,4 +14,5 @@ authRouter.put('/profile',isAuthenticated,updateProfile)
 authRouter.post('/forgotpassword', forgotPassword);
 authRouter.post('/resetpassword/:token', resetPassword);
 
+
 module.exports=authRouter;  

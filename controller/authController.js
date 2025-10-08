@@ -179,7 +179,7 @@ const getMe = async (req, res) => {
     try {
         const userId = req.userId;
 
-        const user = await User.findById(userId).select('-password').populate('assignedCompany', 'name');
+        const user = await User.findById(userId).select('-password').populate('role', 'name');
 
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
@@ -187,7 +187,7 @@ const getMe = async (req, res) => {
 
         res.status(200).json(user);
     } catch (error) {
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ message: 'Server error' +error.message});
     }
 }
 
