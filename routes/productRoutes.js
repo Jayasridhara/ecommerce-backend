@@ -10,7 +10,7 @@ const productRouter = express.Router();
 
 // Public routes
 productRouter.get("/", getAllProducts);
-productRouter.get("/", getFilteredProducts);
+productRouter.get("/filter", getFilteredProducts);
 productRouter.get("/:id", getProductById);
 productRouter.get("/:id/reviews", getProductReviews);
 
