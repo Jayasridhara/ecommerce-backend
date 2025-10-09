@@ -57,7 +57,7 @@ productRouter.post("/:id/reviews", isAuthenticated, addOrUpdateReview);
 productRouter.post("/", isAuthenticated,allowUsers(['seller']), createProduct);
 productRouter.put("/:id", isAuthenticated,allowUsers(['seller']), updateProduct);
 productRouter.delete("/:id", isAuthenticated,allowUsers(['seller']), deleteProduct);
-productRouter.get("/seller", isAuthenticated,allowUsers(['seller']), getSellerProducts);
+productRouter.get("/seller/getproduct", isAuthenticated,allowUsers(['seller']), getSellerProducts);
 
 
 module.exports=productRouter;
