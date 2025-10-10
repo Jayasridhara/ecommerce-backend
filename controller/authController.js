@@ -9,7 +9,7 @@ const User = require('../models/User');
 
 const register=async (req,res)=>{
     try{
-        const {name,email,password}=req.body;
+        const {name,email,password,role}=req.body;
         const existingUser=await User.find({email});
         if(existingUser.length>0){
             return res.status(400).json({
@@ -22,11 +22,12 @@ const register=async (req,res)=>{
         const newUser=new User({
             name,
             email,
-            password:hashedPassword
+            password:hashedPassword,
+            role
         });
         //save user to database
        const savedUser=await newUser.save();
-
+        console.log("savedUser",savedUser)
         if(!savedUser){
             return res.status(500).json({message:'Failed to regsiter user'})
         }
@@ -221,6 +222,8 @@ const updateProfile=async (req,res)=>{
 
         }
 }
+
+
 
 module.exports={
     register,

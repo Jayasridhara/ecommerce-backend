@@ -1,5 +1,10 @@
 const Product=require('../models/Product')
 // ✅ Get all products with search, filter, pagination
+const normalizeString = (str) => {
+  if (!str) return "";
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+};
+
 const getAllProducts = async (req, res) => {
   try {
     const { page = 1, limit = 10, search, color, productType, minPrice, maxPrice } = req.query;
@@ -17,11 +22,16 @@ const getAllProducts = async (req, res) => {
     if (color) query.color = { $regex: color, $options: "i" };
     if (productType) query.productType = { $regex: productType, $options: "i" };
 
-    if (minPrice || maxPrice) {
-      query.price = {};
-      if (minPrice) query.price.$gte = parseFloat(minPrice);
-      if (maxPrice) query.price.$lte = parseFloat(maxPrice);
-    }
+      if (minPrice != null || maxPrice != null) {
+        const min = parseFloat(minPrice);
+        const max = parseFloat(maxPrice);
+        if (!isNaN(min) || !isNaN(max)) {
+          query.price = {};
+          if (!isNaN(min)) query.price.$gte = min;
+          if (!isNaN(max)) query.price.$lte = max;
+        }
+      }
+
 
     const products = await Product.find(query)
       .sort({ createdAt: -1 })
@@ -57,9 +67,19 @@ const getProductById = async (req, res) => {
 };
 
 // ✅ Create a new product
-const createProduct = async (req, res) => {
+const createProduct = async (req, res) =>  {
   try {
-    const { name, price, rating, color, productType, description, image } = req.body;
+    let { name, price, rating, color, productType, productTypeOther, description, image, stock, salesCount } = req.body;
+
+    // Handle "Other" product type
+    if (productType === "Other" && productTypeOther) {
+      productType = productTypeOther;
+    }
+
+    // Normalize productType and color
+    productType = normalizeString(productType);
+    color = normalizeString(color);
+
     const newProduct = new Product({
       name,
       price,
@@ -68,7 +88,10 @@ const createProduct = async (req, res) => {
       productType,
       description,
       image,
-      seller: req.userId, // optional
+      seller: req.userId, 
+      stock: stock != null ? stock : 0,
+      salesCount: salesCount != null ? salesCount : 0,
+      // optional
     });
 
     const savedProduct = await newProduct.save();
@@ -79,13 +102,21 @@ const createProduct = async (req, res) => {
 };
 
 // ✅ Update product
- const updateProduct = async (req, res) => {
+const updateProduct = async (req, res) => {
   try {
     const { id } = req.params;
-    const updates = req.body;
+    let updates = { ...req.body };
+
+    // Handle "Other" product type
+    if (updates.productType === "Other" && updates.productTypeOther) {
+      updates.productType = updates.productTypeOther;
+    }
+
+    // Normalize productType and color if present
+    if (updates.productType) updates.productType = normalizeString(updates.productType);
+    if (updates.color) updates.color = normalizeString(updates.color);
 
     const product = await Product.findByIdAndUpdate(id, updates, { new: true });
-
     if (!product) return res.status(404).json({ message: "Product not found" });
 
     res.status(200).json({ message: "Product updated successfully", product });
