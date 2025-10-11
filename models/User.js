@@ -15,7 +15,17 @@ name: { type: String, required: true },
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Product'
     }
-  ]
+    
+  ],
+   cartItems: [
+    {
+      product: { type: mongoose.Schema.Types.ObjectId, ref: "Product" },
+      qty: { type: Number, default: 1 },
+    },
+    
+  ],
+   cartCount: { type: Number, default: 0 },
+
 }, { timestamps: true })
 
 module.exports=mongoose.model('User',userSchema,'users');

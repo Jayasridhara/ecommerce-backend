@@ -224,6 +224,36 @@ const updateProfile=async (req,res)=>{
 }
 
 
+const updateCart = async (userId, cartItems) => {
+  const updatedCartItems = cartItems.map(item => ({
+    product: item.productId,
+    qty: item.quantity,
+  }));
+
+  const cartCount = updatedCartItems.reduce((total, item) => total + item.qty, 0);
+
+  try {
+    const cart = await User.findOneAndUpdate(
+      { user: userId },
+      { $set: { cartItems: updatedCartItems, cartCount } },
+      { new: true, upsert: true }
+    );
+    return cart;
+  } catch (error) {
+    console.error('Error updating cart:', error);
+    throw new Error('Failed to update cart');
+  }
+};
+
+const cartItemsList =  async (req, res) => {
+  const { userId, cartItems } = req.body;
+  try {
+    const updatedCart = await updateCart(userId, cartItems);
+    res.status(200).json(updatedCart);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+}
 
 module.exports={
     register,
@@ -232,5 +262,5 @@ module.exports={
     logout,
     updateProfile,
     forgotPassword,
-    resetPassword
+    resetPassword,cartItemsList
 }
