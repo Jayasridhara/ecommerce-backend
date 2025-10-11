@@ -113,7 +113,8 @@ const forgotPassword = async (req, res) => {
         await user.save(); // Save the token and expiry to the user
 
         // Create reset URL
-        const resetUrl = `${process.env.WEB_APP_URL}/reset-password/${resetToken}`;
+        const frontendHost = process.env.WEB_APP_URL || 'http://localhost:5173';
+        const resetUrl = `${frontendHost.replace(/\/$/, '')}/reset-password/${resetToken}`;
         console.log(user);
         console.log(resetUrl,"resetUrl")
         const message = `

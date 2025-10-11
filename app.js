@@ -13,7 +13,7 @@ const wishlistRouter = require('./routes/wishlistRoutes');
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors({
-    origin: process.env.WEB_APP_URL,
+    origin: process.env.WEB_APP_URL || 'http://localhost:5173',
     credentials: true
 }));
 
