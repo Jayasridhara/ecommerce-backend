@@ -1,7 +1,7 @@
 const express = require('express');
 
 const { isAuthenticated } = require('../middlewares/auth');
-const { paymentDetails, paymentSession } = require('../controller/paymentController');
+const { paymentDetails, paymentSession, stripeWebhook } = require('../controller/paymentController');
 
 const paymentRouter = express.Router();
 
@@ -13,5 +13,7 @@ const paymentRouter = express.Router();
 paymentRouter.post('/create-checkout-session', isAuthenticated, paymentDetails);
 
 paymentRouter.get('/session/:id', isAuthenticated, paymentSession);
+
+paymentRouter.get('/webhook', isAuthenticated,express.raw({ type: 'application/json' }),stripeWebhook);
 
 module.exports = paymentRouter;
