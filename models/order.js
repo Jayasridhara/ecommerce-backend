@@ -5,7 +5,8 @@ const orderSchema = new mongoose.Schema({
   // cart with per-item snapshots (kept up-to-date by cart controller)
   cartItems: [
     {
-      product: { type: mongoose.Schema.Types.ObjectId, ref: "Product" }, // reference for lookups
+      product: { type: mongoose.Schema.Types.ObjectId, ref: "Product" },
+      user: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, // reference for lookups
       name: { type: String },      // product snapshot
       image: { type: String },
       price: { type: Number, default: 0 }, // unit price snapshot
