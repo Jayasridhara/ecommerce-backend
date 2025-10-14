@@ -5,7 +5,7 @@ const Order = require('../models/order'); // ensure this model exists
 exports.paymentDetails = async (req, res) => {
   try {
     const { items, successUrl, cancelUrl, currency = 'usd', orderId } = req.body;
-
+    console.log("items",items)
     if (!items || !Array.isArray(items) || items.length === 0) {
       console.log("items",items)
       return res.status(400).json({ message: 'No items provided' });
@@ -38,7 +38,7 @@ exports.paymentDetails = async (req, res) => {
         orderId: orderId ? String(orderId) : '',
       },
     });
-    console.log(session)
+    
     return res.json({ sessionId: session.id, url: session.url, publishableKey: process.env.STRIPE_PUBLISHABLE_KEY });
   } catch (error) {
     console.error('Create checkout session error:', error);
@@ -48,12 +48,14 @@ exports.paymentDetails = async (req, res) => {
 exports.paymentSession = async (req, res) => {
   try {
     const sessionId = req.params.id;
+
     if (!sessionId) return res.status(400).json({ message: 'session id required' });
 
     // Expand line_items so we can show purchased products
     const session = await stripe.checkout.sessions.retrieve(sessionId, {
       expand: ['line_items', 'payment_intent'],
     });
+
 
     return res.json(session);
   } catch (error) {
