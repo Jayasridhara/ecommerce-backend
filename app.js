@@ -13,6 +13,11 @@ const wishlistRouter = require('./routes/wishlistRoutes');
 const paymentRouter = require('./routes/paymentRoutes');
 const cartRouter = require('./routes/cartRoutes');
 const { stripeWebhook } = require('./controller/paymentController');
+app.post(
+  '/api/v1/payments/webhook',
+  express.raw({ type: 'application/json' }),
+ stripeWebhook
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors({
@@ -29,10 +34,6 @@ app.use('/api/v1/cart', cartRouter);
 app.use('/api/v1/payments', paymentRouter);
 
 app.use(errorRoute)
-app.post(
-  '/api/v1/payments/webhook',
-  express.raw({ type: 'application/json' }),
- stripeWebhook
-);
+
 
 module.exports=app;

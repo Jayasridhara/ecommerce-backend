@@ -38,7 +38,7 @@ exports.paymentDetails = async (req, res) => {
         orderId: orderId ? String(orderId) : '',
       },
     });
-    
+    console.log("session",session)
     return res.json({ sessionId: session.id, url: session.url, publishableKey: process.env.STRIPE_PUBLISHABLE_KEY });
   } catch (error) {
     console.error('Create checkout session error:', error);
