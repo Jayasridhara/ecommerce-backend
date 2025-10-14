@@ -7,6 +7,7 @@ exports.paymentDetails = async (req, res) => {
     const { items, successUrl, cancelUrl, currency = 'usd', orderId } = req.body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
+      console.log("items",items)
       return res.status(400).json({ message: 'No items provided' });
     }
     if (!successUrl || !cancelUrl) {
@@ -37,7 +38,7 @@ exports.paymentDetails = async (req, res) => {
         orderId: orderId ? String(orderId) : '',
       },
     });
-
+    console.log(session)
     return res.json({ sessionId: session.id, url: session.url, publishableKey: process.env.STRIPE_PUBLISHABLE_KEY });
   } catch (error) {
     console.error('Create checkout session error:', error);
@@ -60,48 +61,51 @@ exports.paymentSession = async (req, res) => {
     return res.status(500).json({ message: error.message || 'Server error' });
   }
 }
+// ...existing code...
 exports.stripeWebhook = async (req, res) => {
   const sig = req.headers['stripe-signature'];
-   console.log('>>> webhook incoming: headers stripe-signature present?', !!sig);
-  console.log('>>> webhook raw body length:', req.body ? (Buffer.isBuffer(req.body) ? req.body.length : JSON.stringify(req.body).length) : 0);
-  let event;
+  console.log('>>> webhook incoming - stripe-signature present?', !!sig);
+  console.log('>>> raw body length:', req.body ? (Buffer.isBuffer(req.body) ? req.body.length : JSON.stringify(req.body).length) : 0);
 
+  let event;
   try {
-    // use raw body (see app.js change below)
-    event = stripe.webhooks.constructEvent(req.rawBody, sig, stripeWebhookSecret);
+    // router uses express.raw({ type: 'application/json' }) so raw payload is in req.body (Buffer)
+    event = stripe.webhooks.constructEvent(req.body, sig, stripeWebhookSecret);
   } catch (err) {
     console.error('Webhook signature verification failed:', err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
-  // Handle the checkout.session.completed event
-  if (event.type === 'checkout.session.completed') {
-    const session = event.data.object;
-    const metadata = session.metadata || {};
-    const orderId = metadata.orderId || metadata.order_id || session.client_reference_id;
+  try {
+    if (event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded') {
+      const session = event.data.object;
+      const orderId = (session.metadata && session.metadata.orderId) || session.client_reference_id;
+      console.log('checkout.session completed - session.id:', session.id, 'orderId:', orderId, 'payment_status:', session.payment_status);
 
-    try {
       if (orderId) {
+        // Update only the payment/status fields and keep cartItems as the canonical items list.
         await Order.findByIdAndUpdate(orderId, {
           $set: {
-            status: 'succeeded', // or 'paid'
+            status: 'succeeded',
             'payment.provider': 'stripe',
             'payment.status': session.payment_status || 'paid',
             'payment.stripeSessionId': session.id,
             'payment.paymentIntentId': session.payment_intent || '',
+            'payment.raw': session, // optional full session for debugging/audit
             paidAt: new Date(),
           },
-        });
+        }, { new: true });
         console.log('Order updated to succeeded for orderId:', orderId);
       } else {
-        // optionally create an order here if you didn't create it earlier
-        console.log('No orderId in session metadata; skipping DB update.');
+        console.warn('No orderId in session metadata; skipping DB update.');
       }
-    } catch (err) {
-      console.error('Failed updating order after webhook:', err);
+    } else {
+      console.log('Unhandled event type:', event.type);
     }
+  } catch (err) {
+    console.error('Error processing webhook event:', err);
   }
 
-  // respond quickly to Stripe
   res.json({ received: true });
 };
+// ...existing code...
