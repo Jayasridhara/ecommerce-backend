@@ -29,4 +29,5 @@ const getSellerStats = async (req, res) => {
   }
 };
 
-module.exports=getSellerStats;
+
+module.exports={getSellerStats,updateCart,cartItemsList};
