@@ -4,9 +4,14 @@ const Order = require('../models/order');
 
 exports.paymentDetails = async (req, res) => {
   try {
-    const { items, successUrl, cancelUrl, currency = 'usd', orderId: providedOrderId } = req.body;
+    // accept optional providedUserId from client (safe fallback only)
+    const { items, successUrl, cancelUrl, currency = 'usd', orderId: providedOrderId, providedUserId } = req.body;
+
     // robust user id detection: check multiple fields
     const userId = req.user ? String(req.user._id || req.user.id || '') : null;
+
+    // debug log to see why metadata might be empty
+    console.log('paymentDetails called. req.user:', req.user ? { id: req.user._id || req.user.id } : null, 'providedUserId:', providedUserId, 'providedOrderId:', providedOrderId);
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ message: 'No items provided' });
@@ -99,8 +104,8 @@ exports.paymentDetails = async (req, res) => {
       // continue — do not block checkout creation
     }
 
-    // final fallback userId: if req.user missing, set to order buyer id
-    let metaUserId = userId || '';
+    // final fallback userId: prefer authenticated user, else providedUserId, else order buyer
+    let metaUserId = userId || (providedUserId ? String(providedUserId) : '');
     if (!metaUserId && orderId) {
       try {
         const found = await Order.findById(orderId).select('buyer');
@@ -110,7 +115,7 @@ exports.paymentDetails = async (req, res) => {
       }
     }
 
-    console.log('Creating stripe session for orderId:', orderId, 'userId:', metaUserId);
+    console.log('Creating stripe session for orderId:', orderId, 'userId (metaUserId):', metaUserId);
 
     // Create the checkout session with metadata that always contains orderId & userId (if available)
     const session = await stripe.checkout.sessions.create({
