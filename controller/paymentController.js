@@ -4,14 +4,8 @@ const Order = require('../models/order');
 
 exports.paymentDetails = async (req, res) => {
   try {
-    // accept optional providedUserId from client (safe fallback only)
-    const { items, successUrl, cancelUrl, currency = 'usd', orderId: providedOrderId, providedUserId } = req.body;
-
-    // robust user id detection: check multiple fields
-    const userId = req.user ? String(req.user._id || req.user.id || '') : null;
-
-    // debug log to see why metadata might be empty
-    console.log('paymentDetails called. req.user:', req.user ? { id: req.user._id || req.user.id } : null, 'providedUserId:', providedUserId, 'providedOrderId:', providedOrderId);
+    const { items, successUrl, cancelUrl, currency = 'usd', orderId: providedOrderId } = req.body;
+    const userId = req.user ? String(req.user._id) : null;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ message: 'No items provided' });
@@ -20,7 +14,6 @@ exports.paymentDetails = async (req, res) => {
       return res.status(400).json({ message: 'successUrl and cancelUrl are required' });
     }
 
-    // Build line_items for Stripe Checkout and compute totals (in cents)
     const line_items = items.map((it) => ({
       price_data: {
         currency,
@@ -36,7 +29,6 @@ exports.paymentDetails = async (req, res) => {
       return sum + unit * qty;
     }, 0);
 
-    // Prepare or create order to attach to session metadata
     let orderId = providedOrderId;
     try {
       const itemsSnapshot = items.map((it) => ({
@@ -75,7 +67,6 @@ exports.paymentDetails = async (req, res) => {
 
         const saved = await newOrder.save();
         orderId = String(saved._id);
-        console.log('Created pending order before session:', orderId, 'buyer:', saved.buyer);
       } else {
         await Order.findByIdAndUpdate(orderId, {
           $set: {
@@ -97,41 +88,24 @@ exports.paymentDetails = async (req, res) => {
             'payment.raw': { initiatedAt: new Date() },
           },
         }, { new: true });
-        console.log('Updated existing order to pending before session:', orderId);
       }
     } catch (err) {
       console.error('Order create/update error before creating session:', err);
-      // continue — do not block checkout creation
     }
 
-    // final fallback userId: prefer authenticated user, else providedUserId, else order buyer
-    let metaUserId = userId || (providedUserId ? String(providedUserId) : '');
-    if (!metaUserId && orderId) {
-      try {
-        const found = await Order.findById(orderId).select('buyer');
-        if (found && found.buyer) metaUserId = String(found.buyer);
-      } catch (e) {
-        // ignore
-      }
-    }
-
-    console.log('Creating stripe session for orderId:', orderId, 'userId (metaUserId):', metaUserId);
-
-    // Create the checkout session with metadata that always contains orderId & userId (if available)
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       mode: 'payment',
       line_items,
       success_url: successUrl,
       cancel_url: cancelUrl,
-      client_reference_id: orderId || metaUserId || undefined,
+      client_reference_id: orderId || userId || undefined,
       metadata: {
-        userId: metaUserId || '',
-        orderId: orderId || '',
+        userId: userId ? String(userId) : '',
+        orderId: orderId ? String(orderId) : '',
       },
     });
 
-    // Update order with stripe session id (best-effort)
     if (orderId) {
       try {
         await Order.findByIdAndUpdate(orderId, {
@@ -183,20 +157,10 @@ exports.stripeWebhook = async (req, res) => {
 
   try {
     if (event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded') {
-      let session = event.data.object;
-
-      // re-retrieve session (expanded) to ensure we have payment_intent and latest status
-      try {
-        session = await stripe.checkout.sessions.retrieve(session.id, { expand: ['payment_intent', 'line_items'] });
-      } catch (err) {
-        console.warn('Failed to re-retrieve checkout session:', err?.message || err);
-      }
-
+      const session = event.data.object;
       const orderId = (session.metadata && session.metadata.orderId) || session.client_reference_id;
-      const metaUserId = (session.metadata && session.metadata.userId) || '';
-      console.log('webhook checkout.session completed - session.id:', session.id, 'orderId:', orderId, 'metaUserId:', metaUserId, 'payment_status:', session.payment_status);
+      console.log('checkout.session completed - session.id:', session.id, 'orderId:', orderId, 'payment_status:', session.payment_status);
 
-      // Try to fetch payment intent for canonical data if present
       let paymentIntent = null;
       if (session.payment_intent) {
         try {
@@ -220,10 +184,7 @@ exports.stripeWebhook = async (req, res) => {
               'payment.status': paymentStatus,
               'payment.stripeSessionId': session.id,
               'payment.paymentIntentId': paymentIntent ? paymentIntent.id : (session.payment_intent || ''),
-              'payment.raw': {
-                session,
-                paymentIntent: paymentIntent || null,
-              },
+              'payment.raw': { session, paymentIntent: paymentIntent || null },
               paidAt: new Date(),
             },
           };
@@ -247,7 +208,6 @@ exports.stripeWebhook = async (req, res) => {
         console.warn('No orderId in session metadata; skipping DB update.');
       }
     } else if (event.type === 'payment_intent.succeeded' || event.type === 'charge.succeeded') {
-      // map paymentIntent/charge back to order for extra resilience
       const pi = event.data.object;
       const intentId = pi.id || (pi.payment_intent && pi.payment_intent.id) || null;
 
@@ -258,7 +218,7 @@ exports.stripeWebhook = async (req, res) => {
               { 'payment.paymentIntentId': intentId },
               { 'payment.stripeSessionId': pi.metadata && pi.metadata.session_id ? String(pi.metadata.session_id) : undefined },
               { 'payment.raw.paymentIntent.id': intentId },
-            ].filter(Boolean)
+            ].filter(Boolean),
           };
           const update = {
             $set: {
@@ -268,7 +228,7 @@ exports.stripeWebhook = async (req, res) => {
               'payment.paymentIntentId': intentId,
               'payment.raw.paymentIntent': pi,
               paidAt: new Date(),
-            }
+            },
           };
           const found = await Order.findOneAndUpdate(query, update, { new: true });
           if (found) console.log('Order updated by payment_intent.succeeded for intent:', intentId, 'orderId:', found._id);
