@@ -62,50 +62,29 @@ exports.paymentSession = async (req, res) => {
 }
 exports.stripeWebhook = async (req, res) => {
   const sig = req.headers['stripe-signature'];
-  console.log('>>> webhook incoming - stripe-signature present?', !!sig);
-  // req.body is a Buffer because the route uses express.raw({type:'application/json'})
-  const rawBodyLength = req.body ? (Buffer.isBuffer(req.body) ? req.body.length : JSON.stringify(req.body).length) : 0;
-  console.log('>>> webhook raw body length:', rawBodyLength);
-  // print headers (useful in Render logs)
-  console.log('>>> headers:', Object.keys(req.headers).reduce((acc, k) => { acc[k]=req.headers[k]; return acc; }, {}));
-
+   console.log('>>> webhook incoming: headers stripe-signature present?', !!sig);
+  console.log('>>> webhook raw body length:', req.body ? (Buffer.isBuffer(req.body) ? req.body.length : JSON.stringify(req.body).length) : 0);
   let event;
+
   try {
-    // verify signature only when a webhook secret is configured
-    if (stripeWebhookSecret) {
-      event = stripe.webhooks.constructEvent(req.body, sig, stripeWebhookSecret);
-    } else {
-      // no secret configured — try to parse body (dev only)
-      event = typeof req.body === 'object' ? req.body : JSON.parse(req.body.toString());
-      console.warn('>>> STRIPE_WEBHOOK_SECRET not set: skipping signature verification (dev only)');
-    }
+    // use raw body (see app.js change below)
+    event = stripe.webhooks.constructEvent(req.rawBody, sig, stripeWebhookSecret);
   } catch (err) {
     console.error('Webhook signature verification failed:', err.message);
-    // Optional debug bypass: if STRIPE_WEBHOOK_DEBUG=true allow unsigned payloads for local testing
-    if (process.env.STRIPE_WEBHOOK_DEBUG === 'true') {
-      try {
-        event = typeof req.body === 'object' ? req.body : JSON.parse(req.body.toString());
-        console.warn('>>> Proceeding with unsigned event because STRIPE_WEBHOOK_DEBUG=true');
-      } catch (parseErr) {
-        return res.status(400).send(`Webhook parse error: ${parseErr.message}`);
-      }
-    } else {
-      return res.status(400).send(`Webhook Error: ${err.message}`);
-    }
+    return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
-  // handle checkout.session.completed
-  try {
-    if (event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded') {
-      const session = event.data.object;
-      const metadata = session.metadata || {};
-      const orderId = metadata.orderId || session.client_reference_id;
-      console.log('>>> checkout.session completed for orderId:', orderId, 'payment_status:', session.payment_status);
+  // Handle the checkout.session.completed event
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object;
+    const metadata = session.metadata || {};
+    const orderId = metadata.orderId || metadata.order_id || session.client_reference_id;
 
+    try {
       if (orderId) {
         await Order.findByIdAndUpdate(orderId, {
           $set: {
-            status: 'succeeded',
+            status: 'succeeded', // or 'paid'
             'payment.provider': 'stripe',
             'payment.status': session.payment_status || 'paid',
             'payment.stripeSessionId': session.id,
@@ -113,16 +92,16 @@ exports.stripeWebhook = async (req, res) => {
             paidAt: new Date(),
           },
         });
-        console.log('>>> Order updated to succeeded for', orderId);
+        console.log('Order updated to succeeded for orderId:', orderId);
       } else {
-        console.warn('>>> No orderId found in session metadata — nothing updated');
+        // optionally create an order here if you didn't create it earlier
+        console.log('No orderId in session metadata; skipping DB update.');
       }
-    } else {
-      console.log('>>> Unhandled event type:', event.type);
+    } catch (err) {
+      console.error('Failed updating order after webhook:', err);
     }
-  } catch (err) {
-    console.error('Error handling webhook event:', err);
   }
 
+  // respond quickly to Stripe
   res.json({ received: true });
 };
