@@ -7,8 +7,11 @@ const orderSchema = new mongoose.Schema({
   items: [
     {
       product: { type: mongoose.Schema.Types.ObjectId, ref: "Product" },
-      quantity: Number,
+      name: String,
       price: Number,
+      quantity: Number,
+      subtotal: Number,
+     
     },
   ],
   // order lifecycle status
