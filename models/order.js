@@ -17,6 +17,16 @@ const orderSchema = new mongoose.Schema({
         name: { type: String },
         email: { type: String },
       },
+      shippingAddress: {
+      fullName: { type: String },
+      addressLine1: { type: String }, 
+      addressLine2: { type: String },   
+      city: { type: String },
+      state: { type: String },
+      postalCode: { type: String },
+      country: { type: String },
+      phone: { type: String },
+  },
     },
   ],
   cartCount: { type: Number, default: 0 },
@@ -27,17 +37,8 @@ const orderSchema = new mongoose.Schema({
   buyer: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   buyerName: { type: String },
   seller: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-
-  // items used for finalized orders (kept for compatibility)
-  items: [
-    {
-      product: { type: mongoose.Schema.Types.ObjectId, ref: "Product" },
-      name: String,
-      price: Number,
-      quantity: Number,
-      subtotal: Number,
-    },
-  ],
+  sellerName: { type: String },
+  sellerEmail: { type: String },    
 
   // order lifecycle status
   status: {

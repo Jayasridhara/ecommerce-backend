@@ -2,10 +2,24 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const stripeWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 const Order = require('../models/order');
 
+const mapItemsToCartItems = (items) => items.map((it) => ({
+  product: it.id || null,
+  name: it.name || it.title || '',
+  image: it.image || '', // Assuming image might be present in item
+  price: Number(it.price) || 0,
+  qty: Number(it.qty) || 1,
+  subtotal: (Number(it.price) || 0) * (Number(it.qty) || 1),
+}));
+
+const calculateTotalAmountCents = (items) => items.reduce((sum, it) => {
+  const unit = Math.round(Number(it.price) * 100) || 0;
+  const qty = Number(it.qty) || 1;
+  return sum + unit * qty;
+}, 0);
+
 exports.paymentDetails = async (req, res) => {
   try {
-    const { items, successUrl, cancelUrl, currency = 'usd', orderId: providedOrderId } = req.body;
-    const userId = req.user ? String(req.user._id) : null;
+    const { items, successUrl, cancelUrl, currency = 'usd', orderId: providedOrderId, userId } = req.body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ message: 'No items provided' });
@@ -23,71 +37,32 @@ exports.paymentDetails = async (req, res) => {
       quantity: Number(it.qty) || 1,
     }));
 
-    const totalAmountCents = items.reduce((sum, it) => {
-      const unit = Math.round(Number(it.price) * 100) || 0;
-      const qty = Number(it.qty) || 1;
-      return sum + unit * qty;
-    }, 0);
+    const totalAmountCents = calculateTotalAmountCents(items);
+    const cartItemsSnapshot = mapItemsToCartItems(items);
 
     let orderId = providedOrderId;
     try {
-      const itemsSnapshot = items.map((it) => ({
-        product: it.id || null,
-        name: it.name || it.title || '',
-        price: Number(it.price) || 0,
-        quantity: Number(it.qty) || 1,
-        subtotal: (Number(it.price) || 0) * (Number(it.qty) || 1),
-      }));
+      const orderUpdateData = {
+        cartItems: cartItemsSnapshot,
+        cartCount: cartItemsSnapshot.length,
+        totalQuantity: cartItemsSnapshot.reduce((s, it) => s + (it.qty || 0), 0),
+        totalAmount: totalAmountCents / 100,
+        status: 'pending',
+        'payment.provider': 'stripe',
+        'payment.status': 'initiated',
+        'payment.raw': { initiatedAt: new Date() },
+      };
 
       if (!orderId) {
         const newOrder = new Order({
-          cartItems: itemsSnapshot.map(si => ({
-            product: si.product,
-            name: si.name,
-            image: '',
-            price: si.price,
-            qty: si.quantity,
-            subtotal: si.subtotal,
-          })),
-          cartCount: itemsSnapshot.length,
-          totalQuantity: itemsSnapshot.reduce((s, it) => s + (it.quantity || 0), 0),
-          totalAmount: totalAmountCents / 100,
+          ...orderUpdateData,
           buyer: req.user ? req.user._id : undefined,
           buyerName: req.user ? (req.user.name || req.user.username || '') : '',
-          items: itemsSnapshot,
-          status: 'pending',
-          payment: {
-            provider: 'stripe',
-            status: 'initiated',
-            stripeSessionId: '',
-            paymentIntentId: '',
-            raw: { createdAt: new Date() },
-          },
         });
-
         const saved = await newOrder.save();
         orderId = String(saved._id);
       } else {
-        await Order.findByIdAndUpdate(orderId, {
-          $set: {
-            status: 'pending',
-            items: itemsSnapshot,
-            cartItems: itemsSnapshot.map(si => ({
-              product: si.product,
-              name: si.name,
-              image: '',
-              price: si.price,
-              qty: si.quantity,
-              subtotal: si.subtotal,
-            })),
-            cartCount: itemsSnapshot.length,
-            totalQuantity: itemsSnapshot.reduce((s, it) => s + (it.quantity || 0), 0),
-            totalAmount: totalAmountCents / 100,
-            'payment.provider': 'stripe',
-            'payment.status': 'initiated',
-            'payment.raw': { initiatedAt: new Date() },
-          },
-        }, { new: true });
+        await Order.findByIdAndUpdate(orderId, { $set: orderUpdateData }, { new: true });
       }
     } catch (err) {
       console.error('Order create/update error before creating session:', err);
@@ -130,11 +105,7 @@ exports.paymentSession = async (req, res) => {
   try {
     const sessionId = req.params.id;
     if (!sessionId) return res.status(400).json({ message: 'session id required' });
-
-    const session = await stripe.checkout.sessions.retrieve(sessionId, {
-      expand: ['line_items', 'payment_intent'],
-    });
-
+    const session = await stripe.checkout.sessions.retrieve(sessionId, { expand: ['line_items', 'payment_intent'] });
     return res.json(session);
   } catch (error) {
     console.error('Retrieve checkout session error:', error);
@@ -146,8 +117,8 @@ exports.stripeWebhook = async (req, res) => {
   const sig = req.headers['stripe-signature'];
   console.log('>>> webhook incoming - stripe-signature present?', !!sig);
   console.log('>>> raw body length:', req.body ? (Buffer.isBuffer(req.body) ? req.body.length : JSON.stringify(req.body).length) : 0);
-
   let event;
+
   try {
     event = stripe.webhooks.constructEvent(req.body, sig, stripeWebhookSecret);
   } catch (err) {
@@ -164,9 +135,7 @@ exports.stripeWebhook = async (req, res) => {
       let paymentIntent = null;
       if (session.payment_intent) {
         try {
-          paymentIntent = await stripe.paymentIntents.retrieve(session.payment_intent, {
-            expand: ['charges.data.balance_transaction', 'charges.data.payment_method_details'],
-          });
+          paymentIntent = await stripe.paymentIntents.retrieve(session.payment_intent, { expand: ['charges.data.balance_transaction', 'charges.data.payment_method_details'] });
         } catch (err) {
           console.warn('Failed to retrieve paymentIntent:', err?.message || err);
         }
@@ -220,6 +189,7 @@ exports.stripeWebhook = async (req, res) => {
               { 'payment.raw.paymentIntent.id': intentId },
             ].filter(Boolean),
           };
+
           const update = {
             $set: {
               status: 'succeeded',
@@ -242,6 +212,5 @@ exports.stripeWebhook = async (req, res) => {
   } catch (err) {
     console.error('Error processing webhook event:', err);
   }
-
   res.json({ received: true });
 };
