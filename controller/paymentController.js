@@ -171,8 +171,17 @@ exports.stripeWebhook = async (req, res) => {
       if (orderId) {
         try {
           const paymentStatus = paymentIntent ? paymentIntent.status : (session.payment_status || 'paid');
-          const newStatus = (paymentStatus === 'succeeded' || paymentStatus === 'paid') ? 'succeeded' : 'paid';
-
+          let newStatus = 'pending';   
+          if(paymentStatus === 'succeeded') {
+             newStatus = "succeeded"
+          }
+          else if( paymentStatus === 'paid')
+          {
+             newStatus = "paid"
+          }
+          else{
+             newStatus = "payment_failed"
+          }
           const update = {
             $set: {
               status: newStatus,
@@ -233,46 +242,6 @@ exports.stripeWebhook = async (req, res) => {
         console.warn('No orderId in session metadata; skipping DB update.');
       }
     } 
-    //else if (event.type === 'payment_intent.succeeded' || event.type === 'charge.succeeded') {
-    //   const pi = event.data.object;
-    //   const intentId = pi.id || (pi.payment_intent && pi.payment_intent.id) || null;
-
-    //   if (intentId) {
-    //     try {
-    //       const query = {
-    //         $or: [
-    //           { 'payment.paymentIntentId': intentId },
-    //           { 'payment.stripeSessionId': pi.metadata && pi.metadata.session_id ? String(pi.metadata.session_id) : undefined },
-    //           { 'payment.raw.paymentIntent.id': intentId },
-    //         ].filter(Boolean),
-    //       };
-
-    //       const update = {
-    //         $set: {
-    //           status: 'succeeded',
-    //           'payment.provider': 'stripe',
-    //           'payment.status': 'succeeded',
-    //           'payment.paymentIntentId': intentId,
-    //           'payment.raw.paymentIntent': pi,
-    //           paidAt: new Date(),
-    //         },
-    //       };
-
-    //       // attach billing details if present
-    //       const charge = pi.charges && pi.charges.data && pi.charges.data[0];
-    //       const billing = charge ? charge.billing_details : pi.billing_details;
-    //       if (billing) {
-    //         if (billing.name) update.$set['payment.cardHolderName'] = billing.name;
-    //         if (billing.email) update.$set['buyerEmail'] = billing.email;
-    //       }
-
-    //       const found = await Order.findOneAndUpdate(query, update, { new: true });
-    //       if (found) console.log('Order updated by payment_intent.succeeded for intent:', intentId, 'orderId:', found._id);
-    //     } catch (err) {
-    //       console.error('Error updating order from payment_intent.succeeded:', err);
-    //     }
-    //   }
-    // } 
     else {
       console.log('Unhandled event type:', event.type);
     }
