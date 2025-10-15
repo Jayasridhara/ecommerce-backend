@@ -184,12 +184,16 @@ exports.stripeWebhook = async (req, res) => {
           }
           const update = {
             $set: {
-              status: newStatus,
+              status: 'Paid',
+              "paymentStatus": session.payment_status,
               'payment.provider': 'stripe',
               'payment.status': paymentStatus,
               'payment.stripeSessionId': session.id,
+              "amountPaid": session.amount_total / 100, // convert cents to USD
+              "currency": session.currency,
               'payment.paymentIntentId': paymentIntent ? paymentIntent.id : (session.payment_intent || ''),
               'payment.raw': { session, paymentIntent: paymentIntent || null },
+
               paidAt: new Date(),
             },
           };
@@ -225,7 +229,12 @@ exports.stripeWebhook = async (req, res) => {
               phone: customer.phone || '',
             };
           }
-
+          if (paymentIntent?.payment_details) {
+            update.$set['payment.details'] = {
+              customer_reference: paymentIntent.payment_details.customer_reference || null,
+              order_reference: paymentIntent.payment_details.order_reference || null,
+            };
+          }
           // attach card-holder name if available
           if (billingDetails && billingDetails.name) {
             update.$set['payment.cardHolderName'] = billingDetails.name;
