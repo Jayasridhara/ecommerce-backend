@@ -1,6 +1,7 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const stripeWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 const Order = require('../models/order');
+const User = require('../models/User'); // <-- added
 
 const mapItemsToCartItems = (items) => items.map((it) => ({
   product: it.id || null,
@@ -19,7 +20,7 @@ const calculateTotalAmountCents = (items) => items.reduce((sum, it) => {
 
 exports.paymentDetails = async (req, res) => {
   try {
-    const { items, successUrl, cancelUrl, currency = 'usd', orderId: providedOrderId, userId } = req.body;
+    const { items, successUrl, cancelUrl, currency = 'usd', orderId: providedOrderId, userId, shippingAddress } = req.body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ message: 'No items provided' });
@@ -53,21 +54,40 @@ exports.paymentDetails = async (req, res) => {
         'payment.raw': { initiatedAt: new Date() },
       };
 
-      // Add buyer and buyerName to update data if req.user is available
-      const buyerInfo = req.user ? {
-        buyer: req.user._id,
-        buyerName: req.user.name || req.user.username || '',
-      } : {};
+      // Build buyer info — prefer authenticated req.user, fallback to provided userId
+      let buyerInfo = {};
+      if (req.user) {
+        buyerInfo = {
+          buyer: req.user._id,
+          buyerName: req.user.name || req.user.username || '',
+          buyerEmail: req.user.email || '',
+        };
+      } else if (userId) {
+        const user = await User.findById(userId).select('name email');
+        if (user) {
+          buyerInfo = {
+            buyer: user._id,
+            buyerName: user.name || '',
+            buyerEmail: user.email || '',
+          };
+        }
+      }
+
+      // If frontend supplied a shippingAddress, attach it (optional)
+      if (shippingAddress && typeof shippingAddress === 'object') {
+        // Map expected top-level shipping fields if your schema supports them
+        orderUpdateData.shippingAddress = shippingAddress;
+      }
 
       if (!orderId) {
         const newOrder = new Order({
           ...orderUpdateData,
-          ...buyerInfo, // Include buyerInfo here for new orders
+          ...buyerInfo, // Include buyer info for new orders
         });
         const saved = await newOrder.save();
         orderId = String(saved._id);
       } else {
-        // When updating an existing order, also update buyer and buyerName
+        // When updating an existing order, also update buyer and buyerName/email
         await Order.findByIdAndUpdate(orderId, { $set: { ...orderUpdateData, ...buyerInfo } }, { new: true });
       }
     } catch (err) {
@@ -147,6 +167,12 @@ exports.stripeWebhook = async (req, res) => {
         }
       }
 
+      // Derive buyer / billing / shipping from session/paymentIntent (if available)
+      const customer = session.customer_details || {};
+      const billingFromIntent = (paymentIntent && paymentIntent.charges && paymentIntent.charges.data && paymentIntent.charges.data[0]) || null;
+      const billingDetails = billingFromIntent ? billingFromIntent.billing_details : (paymentIntent ? paymentIntent.billing_details : null);
+
+      // Build update object
       if (orderId) {
         try {
           const paymentStatus = paymentIntent ? paymentIntent.status : (session.payment_status || 'paid');
@@ -164,6 +190,7 @@ exports.stripeWebhook = async (req, res) => {
             },
           };
 
+          // attach amounts
           if (paymentIntent && typeof paymentIntent.amount_received === 'number') {
             update.$set['payment.raw'].amountReceived = paymentIntent.amount_received;
             update.$set['payment.raw'].currency = paymentIntent.currency;
@@ -172,6 +199,34 @@ exports.stripeWebhook = async (req, res) => {
           } else if (typeof session.amount_total === 'number') {
             update.$set['payment.raw'].amountTotal = session.amount_total;
             update.$set['payment.raw'].currency = session.currency || 'usd';
+          }
+
+          // attach buyer name/email from session if present
+          if (customer.name || customer.email) {
+            update.$set['buyerName'] = customer.name || undefined;
+            update.$set['buyerEmail'] = customer.email || session.customer_email || undefined;
+          }
+
+          // attach shipping address if provided by Stripe Checkout (map to your schema)
+          if (customer.address) {
+            const addr = customer.address;
+            update.$set['shippingAddress'] = {
+              fullName: customer.name || '',
+              addressLine1: addr.line1 || '',
+              addressLine2: addr.line2 || '',
+              city: addr.city || '',
+              state: addr.state || '',
+              postalCode: addr.postal_code || '',
+              country: addr.country || '',
+              phone: customer.phone || '',
+            };
+          }
+
+          // attach card-holder name if available
+          if (billingDetails && billingDetails.name) {
+            update.$set['payment.cardHolderName'] = billingDetails.name;
+          } else if (billingFromIntent && billingFromIntent.billing_details && billingFromIntent.billing_details.name) {
+            update.$set['payment.cardHolderName'] = billingFromIntent.billing_details.name;
           }
 
           await Order.findByIdAndUpdate(orderId, update, { new: true });
@@ -206,6 +261,15 @@ exports.stripeWebhook = async (req, res) => {
               paidAt: new Date(),
             },
           };
+
+          // attach billing details if present
+          const charge = pi.charges && pi.charges.data && pi.charges.data[0];
+          const billing = charge ? charge.billing_details : pi.billing_details;
+          if (billing) {
+            if (billing.name) update.$set['payment.cardHolderName'] = billing.name;
+            if (billing.email) update.$set['buyerEmail'] = billing.email;
+          }
+
           const found = await Order.findOneAndUpdate(query, update, { new: true });
           if (found) console.log('Order updated by payment_intent.succeeded for intent:', intentId, 'orderId:', found._id);
         } catch (err) {
