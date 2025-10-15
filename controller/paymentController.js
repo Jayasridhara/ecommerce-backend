@@ -53,16 +53,22 @@ exports.paymentDetails = async (req, res) => {
         'payment.raw': { initiatedAt: new Date() },
       };
 
+      // Add buyer and buyerName to update data if req.user is available
+      const buyerInfo = req.user ? {
+        buyer: req.user._id,
+        buyerName: req.user.name || req.user.username || '',
+      } : {};
+
       if (!orderId) {
         const newOrder = new Order({
           ...orderUpdateData,
-          buyer: req.user ? req.user._id : undefined,
-          buyerName: req.user ? (req.user.name || req.user.username || '') : '',
+          ...buyerInfo, // Include buyerInfo here for new orders
         });
         const saved = await newOrder.save();
         orderId = String(saved._id);
       } else {
-        await Order.findByIdAndUpdate(orderId, { $set: orderUpdateData }, { new: true });
+        // When updating an existing order, also update buyer and buyerName
+        await Order.findByIdAndUpdate(orderId, { $set: { ...orderUpdateData, ...buyerInfo } }, { new: true });
       }
     } catch (err) {
       console.error('Order create/update error before creating session:', err);
