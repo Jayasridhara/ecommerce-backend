@@ -21,7 +21,7 @@ const calculateTotalAmountCents = (items) => items.reduce((sum, it) => {
 exports.paymentDetails = async (req, res) => {
   try {
     const { items, successUrl, cancelUrl, currency = 'usd', orderId: providedOrderId, shippingAddress } = req.body;
-    const userId = req.user ? req.user._id : null
+    const userId = req.user ? req.user.userId : null
     console.log("user=ID",userId) // Prefer authenticated user, else use provided userId
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ message: 'No items provided' });
