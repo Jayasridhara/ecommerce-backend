@@ -21,7 +21,8 @@ const calculateTotalAmountCents = (items) => items.reduce((sum, it) => {
 exports.paymentDetails = async (req, res) => {
   try {
     const { items, successUrl, cancelUrl, currency = 'usd', orderId: providedOrderId, shippingAddress } = req.body;
-
+    const userId = req.user ? req.user._id : null
+    console.log("user=ID",userId) // Prefer authenticated user, else use provided userId
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ message: 'No items provided' });
     }
@@ -62,8 +63,8 @@ exports.paymentDetails = async (req, res) => {
           buyerName: req.user.name || req.user.username || '',
           buyerEmail: req.user.email || '',
         };
-      } else if (userId) {
-        const user = await User.findById(userId).select('name email');
+      } else if (req.user._id) {
+        const user = await User.findById(req.user._id).select('name email');
         if (user) {
           buyerInfo = {
             buyer: user._id,
@@ -100,7 +101,7 @@ exports.paymentDetails = async (req, res) => {
       line_items,
       success_url: successUrl,
       cancel_url: cancelUrl,
-      client_reference_id: orderId || userId || undefined,
+      client_reference_id: orderId || req.user._id || undefined,
       metadata: {
         userId: userId ? String(userId) : '',
         orderId: orderId ? String(orderId) : '',
