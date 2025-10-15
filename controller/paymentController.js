@@ -57,14 +57,8 @@ exports.paymentDetails = async (req, res) => {
 
       // Build buyer info — prefer authenticated req. , fallback to provided userId
       let buyerInfo = {};
-      if (req.user) {
-        buyerInfo = {
-          buyer: req.user._id,
-          buyerName: req.user.name || req.user.username || '',
-          buyerEmail: req.user.email || '',
-        };
-      } else if (req.user._id) {
-        const user = await User.findById(req.user._id).select('name email');
+      {
+        const user = await User.findById(req.user.userId).select('name email');
         if (user) {
           buyerInfo = {
             buyer: user._id,
