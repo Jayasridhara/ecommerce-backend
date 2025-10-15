@@ -73,7 +73,7 @@ const login = async (req, res) => {
             JWT_SECRET,
             { expiresIn: '24h' }
         );
-
+        
         // set the token in the response header for httpOnly cookie
         res.cookie('token', token, {
             httpOnly: NODE_ENV === 'production',
@@ -205,31 +205,90 @@ const logout = async (req, res) => {
         res.status(500).json({ message: 'Server error' });
     }
 }
-const updateProfile=async (req,res)=>{
-        try{
-            const userId=req.userId;
-            const updates=req.body;
-            delete updates.email;
-            delete updates.password;
-            delete updates.role;
-            const user=await User.findByIdAndUpdate(userId,updates,{new:true}).select('-password');
-            if(!user){
-                return res.status(404).json({message:'User not found'})
-            }
-            res.status(200).json({message:'Profile updated successfully',user})
-        }
-        catch(error){
-            res.status(500).json({message:'Server error'})
+const updateProfile = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const updates = { ...req.body };
 
-        }
+    // Disallow sensitive or immutable fields
+    delete updates.email;
+    delete updates.password;
+    delete updates.role;
+
+    // Flatten nested update
+    const dotUpdates = flattenToDot(updates);
+
+    // If there's nothing valid to update, you can early return or error
+    if (Object.keys(dotUpdates).length === 0) {
+      return res.status(400).json({ message: 'No valid fields to update' });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { $set: dotUpdates },
+      { new: true, runValidators: true }
+    ).select('-password');
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    return res.status(200).json({
+      message: 'Profile updated successfully',
+      user
+    });
+  } catch (error) {
+    console.error('updateProfile error:', error);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Helper
+function flattenToDot(obj, prefix = '', res = {}) {
+  for (const key in obj) {
+    if (!Object.hasOwn(obj, key)) continue;
+    const val = obj[key];
+    const newKey = prefix ? `${prefix}.${key}` : key;
+    if (val !== null && typeof val === 'object' && !Array.isArray(val)) {
+      flattenToDot(val, newKey, res);
+    } else {
+      res[newKey] = val;
+    }
+  }
+  return res;
 }
 
+const profileDelete = async (req, res) => {
+      console.log('deleteProfile: Entered controller for userId:', req.userId); // Add this log
+  try {
+    const userId = req.userId;
+
+    const user = await User.findByIdAndDelete(userId);  
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Optionally clear cookie if logged in
+    res.clearCookie('token', {  
+      secure: NODE_ENV === 'production',
+      sameSite: NODE_ENV === 'production' ? 'none' : 'lax'
+    });
+
+    return res.status(200).json({ message: 'Profile deleted successfully' });
+  } catch (error) {
+    console.error('deleteProfile error:', error);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
 module.exports={
-    register,
+    register,   
     login,
     getMe,
     logout,
     updateProfile,
     forgotPassword,
-    resetPassword,
+    resetPassword,  
+    profileDelete
 }

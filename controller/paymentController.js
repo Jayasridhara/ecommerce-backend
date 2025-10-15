@@ -20,7 +20,7 @@ const calculateTotalAmountCents = (items) => items.reduce((sum, it) => {
 
 exports.paymentDetails = async (req, res) => {
   try {
-    const { items, successUrl, cancelUrl, currency = 'usd', orderId: providedOrderId, userId, shippingAddress } = req.body;
+    const { items, successUrl, cancelUrl, currency = 'usd', orderId: providedOrderId, shippingAddress } = req.body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ message: 'No items provided' });
@@ -54,7 +54,7 @@ exports.paymentDetails = async (req, res) => {
         'payment.raw': { initiatedAt: new Date() },
       };
 
-      // Build buyer info — prefer authenticated req.user, fallback to provided userId
+      // Build buyer info — prefer authenticated req. , fallback to provided userId
       let buyerInfo = {};
       if (req.user) {
         buyerInfo = {
@@ -203,8 +203,8 @@ exports.stripeWebhook = async (req, res) => {
 
           // attach buyer name/email from session if present
           if (customer.name || customer.email) {
-            update.$set['buyerName'] = customer.name || undefined;
-            update.$set['buyerEmail'] = customer.email || session.customer_email || undefined;
+            update.$set['name'] = customer.name || undefined;
+            update.$set['email'] = customer.email || session.customer_email || undefined;
           }
 
           // attach shipping address if provided by Stripe Checkout (map to your schema)
@@ -284,3 +284,4 @@ exports.stripeWebhook = async (req, res) => {
   }
   res.json({ received: true });
 };
+
