@@ -179,7 +179,7 @@ const resetPassword = async (req, res) => {
 
 const getMe = async (req, res) => {
     try {
-        const userId = req.userId;
+        const userId = req.user.userId;
 
         const user = await User.findById(userId).select('-password').populate('role', 'name');
 

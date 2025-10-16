@@ -27,7 +27,7 @@ const isAuthenticated = async (req, res, next) => {
 
 const allowUsers = (roles) => {
     return async (req, res, next) => {
-        const user = await User.findById(req.userId);
+        const user = await User.findById(req.user.userId);
 
         if (!user) {
             return res.status(401).json({ message: 'user not found' });

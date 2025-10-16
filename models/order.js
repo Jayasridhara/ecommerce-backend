@@ -36,6 +36,7 @@ const orderSchema = new mongoose.Schema({
   // buyer/seller top-level references and snapshots
   buyer: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   buyerName: { type: String },
+  buyerEmail: { type: String },
   seller: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   sellerName: { type: String },
   sellerEmail: { type: String },    
@@ -43,7 +44,7 @@ const orderSchema = new mongoose.Schema({
   // order lifecycle status
   status: {
     type: String,
-    enum: ['cart', 'pending', 'processing', 'succeeded', 'paid', 'failed', 'shipped', 'delivered', 'cancelled'],
+    enum: ['cart', 'pending', 'processing', 'succeeded','failed', 'shipped', 'delivered', 'cancelled'],
     default: 'cart',
   },
 
@@ -58,6 +59,8 @@ const orderSchema = new mongoose.Schema({
 
   // timestamp when payment confirmed
   paidAt: { type: Date },
+  deliveryExpectedAt: { type: Date },
+
 
 }, { timestamps: true });
 

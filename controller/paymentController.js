@@ -6,7 +6,7 @@ const User = require('../models/User'); // <-- added
 const mapItemsToCartItems = (items) => items.map((it) => ({
   product: it.id || null,
   name: it.name || it.title || '',
-  image: it.image || '', // Assuming image might be present in item
+  image: it.image || 'https://res.cloudinary.com/danh5swol/image/upload/v1759989787/ecommerce-products/ofx1xcmvrtozk3nebmeb.jpg', // Assuming image might be present in item
   price: Number(it.price) || 0,
   qty: Number(it.qty) || 1,
   subtotal: (Number(it.price) || 0) * (Number(it.qty) || 1),
@@ -21,6 +21,7 @@ const calculateTotalAmountCents = (items) => items.reduce((sum, it) => {
 exports.paymentDetails = async (req, res) => {
   try {
     const { items, successUrl, cancelUrl, currency = 'usd', orderId: providedOrderId, shippingAddress } = req.body;
+    console.log('orderId:', providedOrderId);
     const userId = req.user ? req.user.userId : null
     console.log("user=ID",userId) // Prefer authenticated user, else use provided userId
     if (!items || !Array.isArray(items) || items.length === 0) {
@@ -172,19 +173,19 @@ exports.stripeWebhook = async (req, res) => {
         try {
           const paymentStatus = paymentIntent ? paymentIntent.status : (session.payment_status || 'paid');
           let newStatus = 'pending';   
-          if(paymentStatus === 'succeeded') {
-             newStatus = "succeeded"
-          }
-          else if( paymentStatus === 'paid')
-          {
+          if(paymentStatus === 'paid') {
              newStatus = "paid"
           }
+          else if( paymentStatus === 'succeeded')
+          {
+             newStatus = "succeeded"
+          }
           else{
-             newStatus = "payment_failed"
+             newStatus = "failed"
           }
           const update = {
             $set: {
-              status: 'Paid',
+              status: newStatus,
               "paymentStatus": session.payment_status,
               'payment.provider': 'stripe',
               'payment.status': paymentStatus,

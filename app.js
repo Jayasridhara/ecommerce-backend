@@ -13,6 +13,7 @@ const wishlistRouter = require('./routes/wishlistRoutes');
 const paymentRouter = require('./routes/paymentRoutes');
 const cartRouter = require('./routes/cartRoutes');
 const { stripeWebhook } = require('./controller/paymentController');
+const orderRouter = require('./routes/orderRoutes');
 app.post(
   '/api/v1/payments/webhook',
   express.raw({ type: 'application/json' }),
@@ -32,6 +33,7 @@ app.use('/api/v1/wishlist', wishlistRouter);
 app.use('/api/v1/products',productRouter); 
 app.use('/api/v1/cart', cartRouter); 
 app.use('/api/v1/payments', paymentRouter);
+app.use('/api/v1/orders', orderRouter);
 
 app.use(errorRoute)
 

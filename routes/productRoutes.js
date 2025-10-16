@@ -29,9 +29,9 @@ productRouter.post(
       }
 
       // Ensure the logged-in seller owns this product
-      if (product.seller.toString() !== req.userId.toString()) {
-        return res.status(403).json({ success: false, message: "Unauthorized: not your product" });
-      }
+      // if (product.seller.toString() !== req.user.userId.toString()) {
+      //   return res.status(403).json({ success: false, message: "Unauthorized: not your product" });
+      // }
 
       if (!req.file || !req.file.path) {
         return res.status(400).json({ success: false, message: "No image uploaded" });
@@ -47,6 +47,7 @@ productRouter.post(
         product,
       });
     } catch (error) {
+      console.log(error.message)
       res.status(500).json({ success: false, message: error.message });
     }
   }

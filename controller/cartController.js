@@ -26,7 +26,8 @@ function recalcCart(cart) {
  */
 exports.getCart = async (req, res) => {
   try {
-    const userId = req.userId;
+    const userId = req.user.userId;
+    console.log("userId:",userId)
     let cart = await Order.findOne({ buyer: userId, status: 'cart' });
     if (!cart) {
       const user = userId ? await User.findById(userId).select('name email') : null;
@@ -52,7 +53,7 @@ exports.getCart = async (req, res) => {
 
 exports.addToCart = async (req, res) => {
   try {
-    const userId = req.userId;
+    const userId = req.user.userId;
     const { productId, qty = 1 } = req.body;
     if (!mongoose.Types.ObjectId.isValid(productId)) return res.status(400).json({ message: 'Invalid productId' });
 
@@ -65,13 +66,13 @@ exports.addToCart = async (req, res) => {
       const user = userId ? await User.findById(userId).select('name email') : null;
       cart = new Order({
         buyer: userId || null,
-        buyerName: user ? user.name : undefined,
+        buyerName: user ? user.name : undefined,     
         status: 'cart',
         cartItems: [],
       });
     }
-
     const existing = cart.cartItems.find((i) => String(i.product) === String(product._id));
+    console.log("existing item in cart:",existing);
     if (existing) {
       existing.qty = Number(existing.qty) + Number(qty);
       existing.price = Number(product.price); // update unit price snapshot
@@ -82,22 +83,24 @@ exports.addToCart = async (req, res) => {
         name: product.seller ? product.seller.name : undefined,
         email: product.seller ? product.seller.email : undefined,
       };
-    } else {
+
+    } 
+    else {     
+
       cart.cartItems.push({
         product: product._id,
-        name: product.name,
+        name: product.name, 
         image: product.image,
-        price: Number(product.price),
         qty: Number(qty),
-        subtotal: Math.round((Number(product.price) * Number(qty) + Number.EPSILON) * 100) / 100,
-        seller: {
+        price: Number(product.price),
+        seller: { 
+
           id: product.seller ? product.seller._id : undefined,
           name: product.seller ? product.seller.name : undefined,
           email: product.seller ? product.seller.email : undefined,
         },
       });
-    }
-
+       }
     // set buyerName if missing
     if (!cart.buyerName && userId) {
       const user = await User.findById(userId).select('name email');
@@ -116,7 +119,7 @@ exports.addToCart = async (req, res) => {
 
 exports.removeFromCart = async (req, res) => {
   try {
-    const userId = req.userId;
+    const userId = req.user.userId;
     const { productId } = req.body;
     if (!mongoose.Types.ObjectId.isValid(productId)) return res.status(400).json({ message: 'Invalid productId' });
 
@@ -136,7 +139,7 @@ exports.removeFromCart = async (req, res) => {
 
 exports.updateQty = async (req, res) => {
   try {
-    const userId = req.userId;
+    const userId = req.user.userId;
     const { productId, qty } = req.body;
     if (!mongoose.Types.ObjectId.isValid(productId)) return res.status(400).json({ message: 'Invalid productId' });
     const newQty = Number(qty);
@@ -167,7 +170,7 @@ exports.updateQty = async (req, res) => {
 
 exports.clearCart = async (req, res) => {
   try {
-    const userId = req.userId;
+    const userId = req.user.userId;
     const cart = await Order.findOne({ buyer: userId, status: 'cart' });
     if (!cart) {
       return res.status(200).json({ cart: { cartItems: [], cartCount: 0, totalAmount: 0, totalQuantity: 0 } });

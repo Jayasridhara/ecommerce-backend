@@ -1,3 +1,5 @@
+const Order = require("../models/order");
+
 const getSellerStats = async (req, res) => {
   try {
     const sellerId = req.userId;
@@ -30,4 +32,57 @@ const getSellerStats = async (req, res) => {
 };
 
 
-module.exports={getSellerStats,updateCart,cartItemsList};
+const getMyOrders = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // find all orders for this user where paymentStatus = "Paid"
+    const orders = await Order.find({ 
+      user: userId, 
+      status: "Paid"   // or "succeeded" depending on your schema
+    })// optional: populate product details
+    .sort({ createdAt: -1 });    // newest first
+
+    return res.json(orders);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: err.message || "Server error" });
+  }
+};
+
+/**
+ * Endpoint to be called by payment webhook or client after payment success.
+ * Body: { orderId, payment: { provider, status, paymentIntentId, stripeSessionId, raw, paidAt } }
+ */
+const payOrders =async(req, res) => {
+  try {
+    const { orderId, payment } = req.body;
+    if (!orderId) return res.status(400).json({ message: 'orderId required' });
+
+    const updated = await Order.markOrderPaid(orderId, payment);
+    return res.json(updated);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: err.message || 'Server error' });
+  }
+}
+
+// optional create order
+const createOrder =async(req, res) => {
+  try {
+    const payload = req.body;
+    // attach buyer info from req.user
+    payload.buyer = req.user.id;
+    payload.buyerName = req.user.name || '';
+    payload.buyerEmail = req.user.email || '';
+    const order = await Order.createOrder(payload);
+    res.status(201).json(order);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: err.message || 'Server error' });
+  }
+}
+
+
+
+module.exports={getSellerStats,getMyOrders,payOrders,createOrder};
