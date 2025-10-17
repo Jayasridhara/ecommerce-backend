@@ -73,18 +73,14 @@ const login = async (req, res) => {
             JWT_SECRET,
             { expiresIn: '24h' }
         );
-        
+        console.log("Generated Token:", token);
         // set the token in the response header for httpOnly cookie
-        res.cookie('token', token, {
-            httpOnly: NODE_ENV === 'production',
-            secure: NODE_ENV === 'production',
-            sameSite: NODE_ENV === 'production' ? 'none' : 'lax',
-            maxAge: 24 * 60 * 60 * 1000 // 24 hours
-        });
+        
 
         res.status(200).json({
             message: 'Login successful',
-            user: { id: user._id, name: user.name, email: user.email, role: user.role, profilePicture: user.profilePicture, resume: user.resume }
+            user: { id: user._id, name: user.name, email: user.email, role: user.role, profilePicture: user.profilePicture, resume: user.resume },
+            token: token
         });
     } catch (error) {
         res.status(500).json({ message: 'Server error' });
@@ -196,7 +192,6 @@ const getMe = async (req, res) => {
 const logout = async (req, res) => {
     try {
         res.clearCookie('token', {
-            httpOnly: true,
             secure: NODE_ENV === 'production',
             sameSite: NODE_ENV === 'production' ? 'none' : 'lax'
         });

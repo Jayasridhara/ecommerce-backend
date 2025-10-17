@@ -112,7 +112,7 @@ exports.paymentDetails = async (req, res) => {
       line_items,
       success_url: successUrl,
       cancel_url: cancelUrl,
-      client_reference_id: orderId || req.user._id || undefined,
+      client_reference_id: orderId || req.user.userId || undefined,
       metadata: {
         userId: userId ? String(userId) : '',
         orderId: orderId ? String(orderId) : '',

@@ -76,6 +76,8 @@ const createProduct = async (req, res) =>  {
       productType = productTypeOther;
     }
 
+    console.log("user",req.user._id)
+
     // Normalize productType and color
     productType = normalizeString(productType);
     color = normalizeString(color);
@@ -173,7 +175,6 @@ const getFilteredProducts = async (req, res) => {
 // ✅ Get all products posted by a seller
 const getSellerProducts = async (req, res) => {
   try {
-  console.log("getSellerProducts user id",req.user._id)
     const products = await Product.find({ seller: req.user._id }).sort({ createdAt: -1 });
     console.log("getSellerProducts",products)
     res.status(200).json({
