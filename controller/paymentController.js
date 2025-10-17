@@ -6,10 +6,15 @@ const User = require('../models/User'); // <-- added
 const mapItemsToCartItems = (items) => items.map((it) => ({
   product: it.id || null,
   name: it.name || it.title || '',
-  image: it.image || 'https://res.cloudinary.com/danh5swol/image/upload/v1759989787/ecommerce-products/ofx1xcmvrtozk3nebmeb.jpg', // Assuming image might be present in item
+  image: it.image || '', // Assuming image might be present in item
   price: Number(it.price) || 0,
   qty: Number(it.qty) || 1,
   subtotal: (Number(it.price) || 0) * (Number(it.qty) || 1),
+  seller: {
+    id:it.seller.id,
+    name:it.seller.name,
+    email:it.seller.email
+  }
 }));
 
 const calculateTotalAmountCents = (items) => items.reduce((sum, it) => {
@@ -21,6 +26,7 @@ const calculateTotalAmountCents = (items) => items.reduce((sum, it) => {
 exports.paymentDetails = async (req, res) => {
   try {
     const { items, successUrl, cancelUrl, currency = 'usd', orderId: providedOrderId, shippingAddress } = req.body;
+    console.log("paymentDetails items",items)
     console.log('orderId:', providedOrderId);
     const userId = req.user ? req.user.userId : null
     console.log("user=ID",userId) // Prefer authenticated user, else use provided userId
@@ -65,6 +71,15 @@ exports.paymentDetails = async (req, res) => {
             buyer: user._id,
             buyerName: user.name || '',
             buyerEmail: user.email || '',
+            shippingAddress: {
+            fullName:user.fullName,
+            addressLine1:user.addressLine1,
+            city:user.city,
+            state:user.state,
+            postalCode:user.postalCode,
+            country:user.country,
+            phone:user.phone
+            },
           };
         }
       }
@@ -84,7 +99,8 @@ exports.paymentDetails = async (req, res) => {
         orderId = String(saved._id);
       } else {
         // When updating an existing order, also update buyer and buyerName/email
-        await Order.findByIdAndUpdate(orderId, { $set: { ...orderUpdateData, ...buyerInfo } }, { new: true });
+       const paymentdetailsupdate= await Order.findByIdAndUpdate(orderId, { $set: { ...orderUpdateData, ...buyerInfo } }, { new: true });
+        console.log("paymentdetailsupdate:",paymentdetailsupdate);
       }
     } catch (err) {
       console.error('Order create/update error before creating session:', err);
@@ -194,11 +210,11 @@ exports.stripeWebhook = async (req, res) => {
               "currency": session.currency,
               'payment.paymentIntentId': paymentIntent ? paymentIntent.id : (session.payment_intent || ''),
               'payment.raw': { session, paymentIntent: paymentIntent || null },
-
               paidAt: new Date(),
+              deliveryExpectedAt: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000)
             },
           };
-
+          console.log("status paymenrt",update);
           // attach amounts
           if (paymentIntent && typeof paymentIntent.amount_received === 'number') {
             update.$set['payment.raw'].amountReceived = paymentIntent.amount_received;

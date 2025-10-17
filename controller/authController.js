@@ -196,6 +196,7 @@ const getMe = async (req, res) => {
 const logout = async (req, res) => {
     try {
         res.clearCookie('token', {
+            httpOnly: true,
             secure: NODE_ENV === 'production',
             sameSite: NODE_ENV === 'production' ? 'none' : 'lax'
         });
@@ -207,7 +208,7 @@ const logout = async (req, res) => {
 }
 const updateProfile = async (req, res) => {
   try {
-    const userId = req.userId;
+    const userId = req.user.userId;
     const updates = { ...req.body };
 
     // Disallow sensitive or immutable fields
@@ -259,9 +260,9 @@ function flattenToDot(obj, prefix = '', res = {}) {
 }
 
 const profileDelete = async (req, res) => {
-      console.log('deleteProfile: Entered controller for userId:', req.userId); // Add this log
+      console.log('deleteProfile: Entered controller for userId:', req.user.userId); // Add this log
   try {
-    const userId = req.userId;
+    const userId = req.user.userId;
 
     const user = await User.findByIdAndDelete(userId);  
 

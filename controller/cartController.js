@@ -78,6 +78,8 @@ exports.addToCart = async (req, res) => {
       existing.price = Number(product.price); // update unit price snapshot
       existing.name = product.name;
       existing.image = product.image;
+      existing.salesCount = product.salesCount;
+      existing.stock = product.stock;
       existing.seller = {
         id: product.seller ? product.seller._id : undefined,
         name: product.seller ? product.seller.name : undefined,
@@ -93,6 +95,8 @@ exports.addToCart = async (req, res) => {
         image: product.image,
         qty: Number(qty),
         price: Number(product.price),
+        salesCount: Number(product.salesCount),
+        stock: Number(product.stock),
         seller: { 
 
           id: product.seller ? product.seller._id : undefined,

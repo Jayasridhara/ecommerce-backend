@@ -70,7 +70,7 @@ const getProductById = async (req, res) => {
 const createProduct = async (req, res) =>  {
   try {
     let { name, price, rating, color, productType, productTypeOther, description, image, stock, salesCount } = req.body;
-
+    
     // Handle "Other" product type
     if (productType === "Other" && productTypeOther) {
       productType = productTypeOther;
@@ -88,7 +88,7 @@ const createProduct = async (req, res) =>  {
       productType,
       description,
       image,
-      seller: req.userId, 
+      seller:req.user._id, 
       stock: stock != null ? stock : 0,
       salesCount: salesCount != null ? salesCount : 0,
       // optional
@@ -173,7 +173,9 @@ const getFilteredProducts = async (req, res) => {
 // ✅ Get all products posted by a seller
 const getSellerProducts = async (req, res) => {
   try {
-    const products = await Product.find({ seller: req.userId }).sort({ createdAt: -1 });
+  console.log("getSellerProducts user id",req.user._id)
+    const products = await Product.find({ seller: req.user._id }).sort({ createdAt: -1 });
+    console.log("getSellerProducts",products)
     res.status(200).json({
       success: true,
       count: products.length,
@@ -202,7 +204,7 @@ const addOrUpdateReview = async (req, res) => {
   try {
     const { id } = req.params; // product id
     const { rating, comment } = req.body;
-    const userId = req.userId;
+    const userId = req.user.userId;
 
     const product = await Product.findById(id);
     if (!product) return res.status(404).json({ message: "Product not found" });

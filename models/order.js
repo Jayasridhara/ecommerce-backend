@@ -37,9 +37,11 @@ const orderSchema = new mongoose.Schema({
   buyer: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   buyerName: { type: String },
   buyerEmail: { type: String },
-  seller: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-  sellerName: { type: String },
-  sellerEmail: { type: String },    
+  seller: {
+        id: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        name: String,
+        email: String,
+  },   
 
   // order lifecycle status
   status: {
