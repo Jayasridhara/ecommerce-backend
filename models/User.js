@@ -28,7 +28,21 @@ name: { type: String, required: true },
     country: { type: String, default: '' },
     phone: { type: String, default: '' },
    
-  },
+  }, 
+   cartItems: [{
+        productId: { type: mongoose.Schema.Types.ObjectId, ref: "Product" },
+        name: { type: String }, // product snapshot
+        image: { type: String },
+        price: { type: Number, default: 0 }, // unit price snapshot
+        qty: { type: Number, default: 1 },
+        subtotal: { type: Number, default: 0 },
+        seller: {
+            id: { type: mongoose.Schema.Types.ObjectId },
+            name: { type: String },
+            email: { type: String },
+        }
+    }],
+
    // seller-specific fields
   shopName: { type: String, default: '' },
   shopAddress: {

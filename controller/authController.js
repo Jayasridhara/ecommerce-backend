@@ -32,11 +32,11 @@ const register=async (req,res)=>{
             return res.status(500).json({message:'Failed to regsiter user'})
         }
         //send email
-    //    await sendEmail({
-    //         email,
-    //         subject: 'Welcome to Shop Ease',
-    //         message: `<p>Hello ${name},</p><p>Welcome to Shop Ease! We're glad to have you on board.</p><p>Best regards,<br/>Shop Ease Team</p>`
-    //         });
+       await sendEmail({
+            email,
+            subject: 'Welcome to Shop Verse',
+            message: `<p>Hello ${name},</p><p>Welcome to Shop Ease! We're glad to have you on board.</p><p>Best regards,<br/>Shop Ease Team</p>`
+            });
             res.status(201).json({
               message:'User register successfully'
         })
@@ -76,7 +76,6 @@ const login = async (req, res) => {
         console.log("Generated Token:", token);
         // set the token in the response header for httpOnly cookie
         
-
         res.status(200).json({
             message: 'Login successful',
             user: { id: user._id, name: user.name, email: user.email, role: user.role, profilePicture: user.profilePicture, resume: user.resume },
@@ -146,31 +145,57 @@ const forgotPassword = async (req, res) => {
 // @route   POST /api/auth/resetpassword/:token
 // @access  Public
 const resetPassword = async (req, res) => {
-    const { token } = req.params;
-    const { password } = req.body;
-   
-    try {
-        const user = await User.findOne({
-            resetPasswordToken: token,
-            resetPasswordExpires: { $gt: Date.now() }, // Token must not be expired
-        });
-      
-        if (!user) {
-            return res.status(400).json({ success: false, message: 'Invalid or expired password reset link.' });
-        }
+  const { token } = req.params;
+  const { password: newPassword } = req.body;
 
-        // Update password
-        user.password = password;
-        user.resetPasswordToken = undefined; // Clear the token
-        user.resetPasswordExpires = undefined; // Clear expiry
-        await user.save();
+  try {
+    // ✅ Find user with valid (non-expired) reset token
+    const user = await User.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpires: { $gt: Date.now() },
+    });
 
-        res.status(200).json({ success: true, message: 'Password reset successful. You can now login with your new password.' });
-
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or expired password reset link.",
+      });
     }
+
+    // ✅ Compare new password with existing one
+    const isSamePassword = await bcrypt.compare(newPassword, user.password);
+    if (isSamePassword) {
+      return res.status(400).json({
+        success: false,
+        message: "New password cannot be the same as your current password.",
+      });
+    }
+
+    // ✅ Hash new password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    // ✅ Update user
+    user.password = hashedPassword;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Password reset successful. You can now log in with your new password.",
+    });
+  } catch (error) {
+    console.error("Reset Password Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal server error.",
+    });
+  }
 };
+
+
 
 
 const getMe = async (req, res) => {

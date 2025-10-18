@@ -7,11 +7,11 @@ const getMyOrders = async (req, res) => {
     console.log("requestreq ;",req.user.userId)
     // find all orders for this user where paymentStatus = "Paid"
     const orders = await Order.find({ 
-      buyer: userId, 
-      status: "succeeded"   // or "succeeded" depending on your schema
+     "buyer.id": userId, 
+      status: "paid"   // or "paid" depending on your schema
     })// optional: populate product details
     .sort({ createdAt: -1 });    // newest first
-    console.log("orders:",orders)
+    console.log("orders:",orders);
     return res.json(orders);
   } catch (err) {
     console.error(err);
@@ -22,11 +22,21 @@ const getMyOrders = async (req, res) => {
 const getSellerReports=async (req, res) => {
   try {
     const sellerId = req.user.userId;
+    
     const orders = await Order.find({
       'cartItems.seller.id': sellerId, // match logged-in seller
-      status: 'succeeded'
+      status: 'paid'
     });
-    res.json({ orders });
+    const filteredOrders = orders.map(order => {
+      const sellerItems = order.cartItems.filter(item => item.seller.id.toString() === sellerId.toString());
+      console.log("Seller Items:", sellerItems);
+      return {  
+        ...order.toObject(),
+        cartItems: sellerItems
+      };
+    });
+    console.log("Seller Orders:", filteredOrders);
+    res.json({ orders: filteredOrders });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

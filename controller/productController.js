@@ -90,7 +90,11 @@ const createProduct = async (req, res) =>  {
       productType,
       description,
       image,
-      seller:req.user._id, 
+      seller: {
+        id: req.user._id,
+        name: req.user.name,
+        email: req.user.email,
+      },
       stock: stock != null ? stock : 0,
       salesCount: salesCount != null ? salesCount : 0,
       // optional
@@ -175,7 +179,7 @@ const getFilteredProducts = async (req, res) => {
 // ✅ Get all products posted by a seller
 const getSellerProducts = async (req, res) => {
   try {
-    const products = await Product.find({ seller: req.user._id }).sort({ createdAt: -1 });
+    const products = await Product.find({ "seller.id": req.user._id }).sort({ createdAt: -1 });
     console.log("getSellerProducts",products)
     res.status(200).json({
       success: true,

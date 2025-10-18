@@ -11,9 +11,10 @@ const productSchema = new mongoose.Schema(
     image: { type: String },
     isActive: { type: Boolean, default: true },
     seller: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-    },
+            id: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+            name: String,
+            email: String,
+      }, 
     stock: { type: Number, default: 0 },           // how many items in stock
     category: { type: String },                     // perhaps a more formal category
     salesCount: { type: Number, default: 0 },       // number of times sold (for reports)
