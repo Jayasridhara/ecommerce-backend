@@ -73,7 +73,6 @@ const login = async (req, res) => {
             JWT_SECRET,
             { expiresIn: '24h' }
         );
-        console.log("Generated Token:", token);
         // set the token in the response header for httpOnly cookie
         
         res.status(200).json({

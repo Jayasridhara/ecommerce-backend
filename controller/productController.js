@@ -180,7 +180,6 @@ const getFilteredProducts = async (req, res) => {
 const getSellerProducts = async (req, res) => {
   try {
     const products = await Product.find({ "seller.id": req.user._id }).sort({ createdAt: -1 });
-    console.log("getSellerProducts",products)
     res.status(200).json({
       success: true,
       count: products.length,

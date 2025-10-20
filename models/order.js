@@ -90,6 +90,15 @@ const orderSchema = new mongoose.Schema({
             name: { type: String, required: true },
             email: { type: String, required: true },
         },
+
+        status: {
+        type: String,
+        enum: ['cart','paid', 'shipped', 'delivered', 'cancelled'],
+        default: 'cart',
+         },
+        deliveryExpectedAt: { type: Date },
+        shippedAt : { type: Date },
+        deliveredAt: { type: Date },
     }],
 
     cartCount: { type: Number, default: 0 }, // distinct products
@@ -127,8 +136,7 @@ const orderSchema = new mongoose.Schema({
         default: 'cart',
     },
 
-    deliveryExpectedAt: { type: Date },
-    deliveredAt: { type: Date },
+    
 
 }, { timestamps: true });
 

@@ -78,7 +78,8 @@ exports.addToCart = async(req, res) => {
                     id: product.seller ? product.seller.id : undefined,
                     name: product.seller ? product.seller.name : undefined,
                     email: product.seller ? product.seller.email : undefined
-                }
+                },
+                status: 'cart',
             }
             updatedUser = await User.findOneAndUpdate({ _id: userId }, { $push: { cartItems: cartItem } }, { new: true });
         }

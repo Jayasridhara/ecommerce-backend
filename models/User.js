@@ -40,7 +40,12 @@ name: { type: String, required: true },
             id: { type: mongoose.Schema.Types.ObjectId },
             name: { type: String },
             email: { type: String },
-        }
+        },
+        status: {
+        type: String,
+        enum: ['cart','paid', 'shipped', 'delivered', 'cancelled'],
+        default: 'cart',
+         },
     }],
 
    // seller-specific fields

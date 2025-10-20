@@ -1,6 +1,7 @@
   const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
   const stripeWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
   const Order = require('../models/order');
+  const Product = require('../models/Product');
   const User = require('../models/User'); // <-- added
   const sendEmail=require('../utils/email')
   const mapItemsToCartItems = (items) => items.map((it) => ({
@@ -14,7 +15,8 @@
       id:it.seller.id,
       name:it.seller.name,
       email:it.seller.email
-    }
+    },
+    status: it.seller.status || 'cart',
   }));
 
   const calculateTotalAmountCents = (items) => items.reduce((sum, it) => {
@@ -120,13 +122,23 @@
                   "payment.status": "paid",
                   status: "paid",       // optionally update overall order status
                   "payment.paymentIntentId": session.payment_intent.id,
-                  paidAt: new Date(),
-                  deliveryExpectedAt: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000) 
+                  "payment.paidAt": new Date(),
                 }
                 },
                 { new: true });
               console.log("Order marked as paid:", updatedOrder ? updatedOrder._id : "not found");
-               if (req.user && req.user.userId) {
+              //order cartitems status update
+              for(const item of updatedOrder.cartItems)
+              {
+
+                item.status="paid";
+                item.deliveryExpectedAt=new Date(Date.now() + 10 * 24 * 60 * 60 * 1000);
+
+              }
+              await updatedOrder.save();
+                // Clear user's cartItems after successful payment
+               if (req.user && req.user.userId)
+                {
                       try {
                         await User.findByIdAndUpdate(
                           req.user.userId,
@@ -135,14 +147,75 @@
                       } catch (err) {
                         console.warn("Failed to clear user.cartItems:", err);
                     }
+                }
+
+                //increase sales count and decrease stock
+                for(const item of updatedOrder.cartItems)
+                { 
+                  try{  
+                    await Product.findByIdAndUpdate(
+                      item.product,
+                      { $inc: { salesCount: item.qty, stock: -item.qty } }
+                    );
                   }
+                  catch(err){
+                    console.error("Failed to update product stock/salesCount for product:", item.product, err);
+                  }
+                }
+                console.log("updatedOrder",updatedOrder);
+
+                // //send email to user
+                // try{
+                //   const email=updatedOrder.buyer.email;
+                //   const subject="Order Payment Successful";
+                //   const message=`<h1>Dear ${updatedOrder.buyer.name},</h1>
+                //   <p>Your payment for order ${updatedOrder._id} has been successfully processed.</p>
+                //   <p>Thank you for shopping with us!</p>`;
+                //   await sendEmail({email,subject,message});
+                // }catch(err){
+                //   console.error("Failed to send payment success email:", err);
+                // }
+                //end email
+                // //send email to seller  
+                // try{
+                //   for(const item of updatedOrder.cartItems)
+                //   {
+                //     const email=item.seller.email;
+                //     const subject="Product Sold Notification";
+                //     const message=`<h1>Dear ${item.seller.name},</h1>
+                //     <p>Your product "${item.name}" has been sold in order ${updatedOrder._id}.</p>
+                //     <p>Please prepare it for shipping.</p>`;
+                //     await sendEmail({email,subject,message});
+                //   }
+                // }catch(err){
+                //   console.error("Failed to send seller notification email:", err);
+                // }
+        }
+        else
+        {
+          //update order as failed
+          const updatedOrder = await Order.findOneAndUpdate(
+            { "payment.stripeSessionId": sessionId },
+            {
+              $set: {
+                "payment.status": "failed",
+                status: "failed",       // optionally update overall order status
+                "payment.paymentIntentId": session.payment_intent.id,
+              }
+              },
+              { new: true });
+            console.log("Order marked as failed:", updatedOrder ? updatedOrder._id : "not found");
+            
         }
         console.log("sesiio", session)
       return res.json(session);
     } catch (error) {
       console.error('Retrieve checkout session error:', error);
+
       return res.status(500).json({ message: error.message || 'Server error' });
+
     }
+
   };
 
   exports.stripeWebhook = async (req, res) => {
@@ -253,7 +326,6 @@
             }
 
             const updatedOrder = await Order.findByIdAndUpdate(orderId, update, { new: true });
-            console.log("Order updated successfully:", updatedOrder);
             console.log("Order updated:", updatedOrder._id, "->", newStatus);
           } catch (err) {
             console.error('Error updating order in webhook:', err);
