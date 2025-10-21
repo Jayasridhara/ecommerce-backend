@@ -41,6 +41,7 @@ const userSchema=new mongoose.Schema({
             name: { type: String },
             email: { type: String },
         },
+        stock: { type: Number, default: 0 }, 
         status: {
         type: String,
         enum: ['cart','paid', 'shipped', 'delivered', 'cancelled'],

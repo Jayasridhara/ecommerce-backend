@@ -2,7 +2,11 @@ const Product=require('../models/Product')
 // ✅ Get all products with search, filter, pagination
 const normalizeString = (str) => {
   if (!str) return "";
-  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+  return str
+    .toLowerCase()
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
 };
 
 const getAllProducts = async (req, res) => {

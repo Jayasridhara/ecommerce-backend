@@ -74,6 +74,7 @@ exports.addToCart = async(req, res) => {
                 price: Number(product.price), // unit price snapshot
                 qty: Number(qty),
                 subtotal: 0,
+                stock:product.stock,
                 seller: {
                     id: product.seller ? product.seller.id : undefined,
                     name: product.seller ? product.seller.name : undefined,
