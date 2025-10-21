@@ -80,7 +80,16 @@
             cartCount: cartItemsSnapshot.length,
             totalQuantity: cartItemsSnapshot.reduce((sum, i) => sum + i.qty, 0),
             totalAmount: cartItemsSnapshot.reduce((sum, i) => sum + i.subtotal, 0),
-            shippingAddress: shippingAddress || {},
+            shippingAddress: {
+                fullName: shippingAddress?.fullName || user.shippingAddress.fullName || '',
+                addressLine1: shippingAddress?.addressLine1 || user.shippingAddress.addressLine1 || '',
+                addressLine2: shippingAddress?.addressLine2 || user.shippingAddress.addressLine2 || '', 
+                city: shippingAddress?.city || user.shippingAddress.city || '',
+                state: shippingAddress?.state || user.shippingAddress.state || '',
+                postalCode: shippingAddress?.postalCode || user.shippingAddress.postalCode || '',
+                country: shippingAddress?.country || user.shippingAddress.country || '',
+                phone: shippingAddress?.phone || user.shippingAddress.phone || '',
+            },
             status: 'cart',
             payment: {
                 provider: 'stripe',
@@ -150,19 +159,32 @@
                 }
 
                 //increase sales count and decrease stock
-                for(const item of updatedOrder.cartItems)
-                { 
-                  try{  
-                    await Product.findByIdAndUpdate(
-                      item.product,
-                      { $inc: { salesCount: item.qty, stock: -item.qty } }
-                    );
+               for (const item of updatedOrder.cartItems) {
+                try {
+                  const product = await Product.findById(item.product);
+
+                  // Ensure numeric defaults
+                  if (typeof product.salesCount !== "number" || typeof product.stock !== "number") {
+                    await Product.findByIdAndUpdate(item.product, {
+                      $set: {
+                        salesCount: product.salesCount ?? 0,
+                        stock: product.stock ?? 0,
+                      },
+                    });
                   }
-                  catch(err){
-                    console.error("Failed to update product stock/salesCount for product:", item.product, err);
-                  }
+
+                 // ✅ Now safely increment salesCount by 1 and decrement stock by 1
+                await Product.findByIdAndUpdate(item.product, {
+                  $inc: { salesCount: 1, stock: -1 },
+                });
+
+                console.log(`✅ Updated product ${item.product}: +1 sale, -1 stock`);
+                } catch (err) {
+                  console.error("❌ Failed to update product stock/salesCount for product:", item.product, err);
                 }
-                console.log("updatedOrder",updatedOrder);
+              }
+
+
 
                 // //send email to user
                 // try{
@@ -170,12 +192,18 @@
                 //   const subject="Order Payment Successful";
                 //   const message=`<h1>Dear ${updatedOrder.buyer.name},</h1>
                 //   <p>Your payment for order ${updatedOrder._id} has been successfully processed.</p>
+                //   <p>Order Details:</p>
+                //   <ul>
+                //   ${updatedOrder.cartItems.map(item => `<li>${item.name} - Quantity: ${item.qty} - Subtotal: $${item.subtotal}</li>`).join('')}
+                //   </ul>
+                //   <p>Total Amount Paid: $${updatedOrder.totalAmount}</p>
+                //   <p>Expected Delivery Date: ${new Date(updatedOrder.cartItems[0].deliveryExpectedAt).toDateString()}</p>
                 //   <p>Thank you for shopping with us!</p>`;
                 //   await sendEmail({email,subject,message});
                 // }catch(err){
                 //   console.error("Failed to send payment success email:", err);
                 // }
-                //end email
+                // //end email
                 // //send email to seller  
                 // try{
                 //   for(const item of updatedOrder.cartItems)
@@ -184,6 +212,17 @@
                 //     const subject="Product Sold Notification";
                 //     const message=`<h1>Dear ${item.seller.name},</h1>
                 //     <p>Your product "${item.name}" has been sold in order ${updatedOrder._id}.</p>
+                //     <p>Quantity Sold: ${item.qty}</p>
+                //     <p>Total Amount Paid by Buyer: $${updatedOrder.totalAmount}</p>
+                //     <p>Buyer Shipping Address:</p>
+                //     <p>
+                //     ${updatedOrder.shippingAddress.fullName}<br/>
+                //     ${updatedOrder.shippingAddress.addressLine1}<br/>
+                //     ${updatedOrder.shippingAddress.addressLine2 ? updatedOrder.shippingAddress.addressLine2 + '<br/>' : ''}
+                //     ${updatedOrder.shippingAddress.city}, ${updatedOrder.shippingAddress.state} - ${updatedOrder.shippingAddress.postalCode}<br/>
+                //     ${updatedOrder.shippingAddress.country}<br/>
+                //     Phone: ${updatedOrder.shippingAddress.phone}
+                //     </p>
                 //     <p>Please prepare it for shipping.</p>`;
                 //     await sendEmail({email,subject,message});
                 //   }

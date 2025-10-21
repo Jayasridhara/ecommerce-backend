@@ -302,6 +302,22 @@ const profileDelete = async (req, res) => {
   }
 };
 
+const updateShippingAddress = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { shippingAddress: req.body },
+      { new: true }
+    );
+    res.json({ message: "Shipping address updated successfully", user: updatedUser });
+  } catch (err) {
+    console.error("Error updating shipping address:", err);
+    res.status(500).json({ message: "Failed to update shipping address" });
+  }
+};
+
+
 module.exports={
     register,   
     login,
@@ -310,5 +326,6 @@ module.exports={
     updateProfile,
     forgotPassword,
     resetPassword,  
-    profileDelete
+    profileDelete,
+    updateShippingAddress
 }
