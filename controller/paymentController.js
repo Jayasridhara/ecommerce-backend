@@ -27,7 +27,7 @@
 
   exports.paymentDetails = async (req, res) => {
     try {
-      const { items, successUrl, cancelUrl, currency = 'usd', orderId: providedOrderId, shippingAddress } = req.body;
+      const { items, successUrl, cancelUrl, currency = 'usd', orderId: providedOrderId, shippingAddress,headers } = req.body;
       console.log("paymentDetails items",items)
       console.log('orderId:', providedOrderId);
       const userId = req.user ? req.user.userId : null
@@ -108,6 +108,7 @@
             url: session.url,
             publishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
             orderId: order._id,
+            headers:headers
         });
     
     
