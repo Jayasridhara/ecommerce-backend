@@ -10,7 +10,7 @@ const productRouter = express.Router();
 
 // Public routes
 productRouter.get("/", getAllProducts);
-productRouter.get("/filter", getFilteredProducts);
+
 productRouter.get("/:id", getProductById);
 productRouter.get("/:id/reviews", getProductReviews);
 
@@ -27,18 +27,19 @@ productRouter.post(
       if (!product) {
         return res.status(404).json({ success: false, message: "Product not found" });
       }
-
-      // Ensure the logged-in seller owns this product
-      // if (product.seller.toString() !== req.user.userId.toString()) {
-      //   return res.status(403).json({ success: false, message: "Unauthorized: not your product" });
-      // }
-
-      if (!req.file || !req.file.path) {
+      if (!req.file.path|| !req.file ) {
         return res.status(400).json({ success: false, message: "No image uploaded" });
       }
-
-      // Cloudinary returns `req.file.path` as the image URL
       product.image = req.file.path;
+
+      if (product.image && !product.image.startsWith("https://res.cloudinary.com/")) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Invalid image source. Only Cloudinary URLs allowed."
+        });
+      }
+      // Cloudinary returns `req.file.path` as the image URL
+      
       await product.save();
       
       res.json({
@@ -58,6 +59,7 @@ productRouter.post("/:id/reviews", isAuthenticated, addOrUpdateReview);
 productRouter.post("/", isAuthenticated,allowUsers(['seller']), createProduct);
 productRouter.put("/:id", isAuthenticated,allowUsers(['seller']), updateProduct);
 productRouter.delete("/:id", isAuthenticated,allowUsers(['seller']), deleteProduct);
+productRouter.get("/filter", getFilteredProducts);
 productRouter.get("/seller/getproduct", isAuthenticated,allowUsers(['seller']), getSellerProducts);
 
 

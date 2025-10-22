@@ -172,7 +172,8 @@ const getFilteredProducts = async (req, res) => {
       // products with rating ≥ given rating
       filter.rating = { $gte: parseFloat(rating) };
     }
-
+    filter["seller.id"] = req.user._id;
+    console.log("filter product",filter)
     const products = await Product.find(filter).sort({ createdAt: -1 });
     res.status(200).json({ products });
   } catch (error) {
