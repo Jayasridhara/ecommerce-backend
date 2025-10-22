@@ -81,21 +81,21 @@ const updateOrderStatusBySeller = async (req, res) => {
           item.shippedAt = now;
           //send email to buyer that item has been shipped
          
-             sendEmail({
-              email: order.buyer.email,
-              subject: `Your order ${order._id} has been shipped! 🚚`,
-              message: `Hello ${order.buyer.name},\n\nYour order with ID ${order._id} has been shipped by the seller.`
-            });
+            //  sendEmail({
+            //   email: order.buyer.email,
+            //   subject: `Your order ${order._id} has been shipped! 🚚`,
+            //   message: `Hello ${order.buyer.name},\n\nYour order with ID ${order._id} has been shipped by the seller.`
+            // });
           
         } else if (status === "delivered") {
           item.deliveredAt = now;
           //send email to buyer that item has been delivered
           
-             sendEmail({
-              email: order.buyer.email,
-              subject: `Your order ${order._id} has been delivered! 📦`,
-              message: `Hello ${order.buyer.name},\n\nYour order with ID ${order._id} has been delivered. Enjoy your purchase!`
-            });
+            //  sendEmail({
+            //   email: order.buyer.email,
+            //   subject: `Your order ${order._id} has been delivered! 📦`,
+            //   message: `Hello ${order.buyer.name},\n\nYour order with ID ${order._id} has been delivered. Enjoy your purchase!`
+            // });
         }
       }
     });
