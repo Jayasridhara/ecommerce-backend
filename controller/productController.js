@@ -148,19 +148,16 @@ const updateProduct = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
 const getFilteredProducts = async (req, res) => {
   try {
-    const { type, color, minPrice, maxPrice, rating, category, seller, isActive } =
-      req.query;
+    const { type, color, minPrice, maxPrice, rating, category, isActive } = req.query;
 
-    const filter = {};  
-
+    const filter = { "seller.id": req.user._id };
+    console.log("filter",filter)
     if (type) filter.productType = type;
     if (color) filter.color = color;
     if (category) filter.category = category;
-    if (seller) filter.seller = seller;
-    if (isActive != null) filter.isActive = isActive === "true";
+    if (isActive != null) filter.isActive = (isActive === "true");
 
     if (minPrice != null || maxPrice != null) {
       filter.price = {};
@@ -169,22 +166,25 @@ const getFilteredProducts = async (req, res) => {
     }
 
     if (rating != null) {
-      // products with rating ≥ given rating
       filter.rating = { $gte: parseFloat(rating) };
     }
-    filter["seller.id"] = req.user._id;
-    console.log("filter product",filter)
+
+    console.log("filter product", filter);
+
     const products = await Product.find(filter).sort({ createdAt: -1 });
-    res.status(200).json({ products });
+    return res.status(200).json({ products });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: error.message });
   }
 };
+
+
 
 // ✅ Get all products posted by a seller
 const getSellerProducts = async (req, res) => {
   try {
     const products = await Product.find({ "seller.id": req.user._id }).sort({ createdAt: -1 });
+    // console.log("products",products)
     res.status(200).json({
       success: true,
       count: products.length,
