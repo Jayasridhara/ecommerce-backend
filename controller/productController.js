@@ -1,7 +1,9 @@
+const mongoose = require("mongoose");
 const Product=require('../models/Product')
 // ✅ Get all products with search, filter, pagination
 const normalizeString = (str) => {
   if (!str) return "";
+  str = str.trim().toLowerCase();
   return str
     .toLowerCase()
     .split(" ")
@@ -9,9 +11,10 @@ const normalizeString = (str) => {
     .join(" ");
 };
 
+
 const getAllProducts = async (req, res) => {
   try {
-    const { page = 1, limit = 10, search, color, productType, minPrice, maxPrice } = req.query;
+    const { page, limit , search, color, productType, minPrice, maxPrice } = req.query;
 
     const query = { isActive: true };
 
@@ -75,6 +78,13 @@ const createProduct = async (req, res) =>  {
   try {
     let { name, price, rating, color, productType, productTypeOther, description, image, stock, salesCount } = req.body;
     
+    name = name?.trim();
+    color = color?.trim();
+    productType = productType?.trim();
+    productTypeOther = productTypeOther?.trim();
+    description = description?.trim();
+    image = image?.trim();
+
     // Handle "Other" product type
     if (productType === "Other" && productTypeOther) {
       productType = productTypeOther;
@@ -83,6 +93,7 @@ const createProduct = async (req, res) =>  {
     console.log("user",req.user._id)
 
     // Normalize productType and color
+    name=normalizeString(name);
     productType = normalizeString(productType);
     color = normalizeString(color);
 
@@ -121,8 +132,9 @@ const updateProduct = async (req, res) => {
     if (updates.productType === "Other" && updates.productTypeOther) {
       updates.productType = updates.productTypeOther;
     }
-
     // Normalize productType and color if present
+    if (updates.name) updates.name = normalizeString(updates.name);
+    if (updates.description) updates.description = updates.description.trim();
     if (updates.productType) updates.productType = normalizeString(updates.productType);
     if (updates.color) updates.color = normalizeString(updates.color);
 
@@ -148,33 +160,60 @@ const updateProduct = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-const getFilteredProducts = async (req, res) => {
+
+const getFilteredAllProducts = async (req, res) => {
   try {
-    const { type, color, minPrice, maxPrice, rating, category, isActive } = req.query;
+    const { type, color, minPrice, maxPrice, query } = req.query;
+    const filter = {};
 
-    const filter = { "seller.id": req.user._id };
-    console.log("filter",filter)
-    if (type) filter.productType = type;
-    if (color) filter.color = color;
-    if (category) filter.category = category;
-    if (isActive != null) filter.isActive = (isActive === "true");
+    if (type) filter.productType = new RegExp(`^${type}$`, "i");
+    if (color) filter.color = new RegExp(`^${color}$`, "i");
+    if (query) filter.name = new RegExp(query, "i");
 
-    if (minPrice != null || maxPrice != null) {
+    if (minPrice || maxPrice) {
       filter.price = {};
-      if (minPrice != null) filter.price.$gte = parseFloat(minPrice);
-      if (maxPrice != null) filter.price.$lte = parseFloat(maxPrice);
+      if (minPrice) filter.price.$gte = Number(minPrice);
+      if (maxPrice) filter.price.$lte = Number(maxPrice);
     }
 
-    if (rating != null) {
-      filter.rating = { $gte: parseFloat(rating) };
-    }
+    const products = await Product.find(filter);
+    res.status(200).json(products);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error filtering products" });
+  }
+};
 
-    console.log("filter product", filter);
 
-    const products = await Product.find(filter).sort({ createdAt: -1 });
-    return res.status(200).json({ products });
+
+const { Types } = require("mongoose");
+const getFilteredProducts = async (req, res) => {
+ try {
+    const { type, color, minPrice, maxPrice ,outOfStock} = req.query;
+      const filter = { isActive: true };
+
+    // Add seller
+    filter["seller.id"] = new Types.ObjectId(req.user.userId);
+
+    // Add query filters
+    if (req.query.type) filter.productType = req.query.type;
+    if (req.query.color) filter.color = req.query.color;
+    if (req.query.minPrice)
+      filter.price = { ...filter.price, $gte: Number(req.query.minPrice) };
+    if (req.query.maxPrice)
+      filter.price = { ...filter.price, $lte: Number(req.query.maxPrice) };
+
+   
+   console.log("Filter query:", filter); // 👀 DEBUG: see what Mongo is searching
+
+    const products = await Product.find(filter);
+
+    console.log("Filtered products found:", products.length,products);
+
+    res.status(200).json(products);
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    console.error("Filter error:", error);
+    res.status(500).json({ message: "Error filtering products" });
   }
 };
 
@@ -249,6 +288,6 @@ const addOrUpdateReview = async (req, res) => {
 
 
 module.exports={
-    getAllProducts,getProductById,createProduct,updateProduct,deleteProduct,getSellerProducts,getProductReviews,addOrUpdateReview,getFilteredProducts
+    getAllProducts,getProductById,createProduct,updateProduct,deleteProduct,getSellerProducts,getProductReviews,addOrUpdateReview,getFilteredProducts,getFilteredAllProducts
 }
 

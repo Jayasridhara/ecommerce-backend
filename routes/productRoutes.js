@@ -1,5 +1,5 @@
 const express = require('express');
-const { getAllProducts, getProductById, createProduct, updateProduct, deleteProduct, getSellerProducts, getFilteredProducts, getProductReviews, addOrUpdateReview } = require('../controller/productController');
+const { getAllProducts, getProductById, createProduct, updateProduct, deleteProduct, getSellerProducts, getFilteredProducts, getProductReviews, addOrUpdateReview, getFilteredAllProducts } = require('../controller/productController');
 const { isAuthenticated, allowUsers } = require('../middlewares/auth');
 const upload = require('../middlewares/upload');
 const Product = require('../models/Product');
@@ -10,7 +10,8 @@ const productRouter = express.Router();
 
 // Public routes
 productRouter.get("/", getAllProducts);
-
+productRouter.get("/allproductfilter", getFilteredAllProducts);
+productRouter.get("/filter", isAuthenticated,getFilteredProducts);
 productRouter.get("/:id", getProductById);
 productRouter.get("/:id/reviews", getProductReviews);
 
@@ -59,7 +60,7 @@ productRouter.post("/:id/reviews", isAuthenticated, addOrUpdateReview);
 productRouter.post("/", isAuthenticated,allowUsers(['seller']), createProduct);
 productRouter.put("/:id", isAuthenticated,allowUsers(['seller']), updateProduct);
 productRouter.delete("/:id", isAuthenticated,allowUsers(['seller']), deleteProduct);
-productRouter.get("/filter", getFilteredProducts);
+
 productRouter.get("/seller/getproduct", isAuthenticated,allowUsers(['seller']), getSellerProducts);
 
 
