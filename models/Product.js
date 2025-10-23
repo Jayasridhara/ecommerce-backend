@@ -25,7 +25,7 @@ const productSchema = new mongoose.Schema(
         rating: Number,
         comment: String,
         createdAt: Date,
-      },
+      },  
     ],
   },
   { timestamps: true }
