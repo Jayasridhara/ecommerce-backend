@@ -1,3 +1,5 @@
+// const baseURL = "http://localhost:5000/api/v1";
+
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const stripeWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 const Order = require('../models/order');
