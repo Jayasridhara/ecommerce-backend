@@ -27,8 +27,9 @@
 
   exports.paymentDetails = async (req, res) => {
     try {
-      const { items, successUrl, cancelUrl, currency = 'usd', orderId: providedOrderId, shippingAddress,headers } = req.body;
+      const { items, successUrl, cancelUrl, currency = 'usd', orderId: providedOrderId, shippingAddress,headers,isBuyNow } = req.body;
       console.log("paymentDetails items",items)
+      console.log("isBuynow",isBuyNow);
       console.log('orderId:', providedOrderId);
       const userId = req.user ? req.user.userId : null
       console.log("user=ID",userId) // Prefer authenticated user, else use provided userId
@@ -99,6 +100,7 @@
                 amountPaid: "",
                 paidAt: Date.now()
             },
+            isBuynow:isBuyNow
         };
 
         const order = Order.create(orderPayload);
@@ -146,10 +148,12 @@
 
               }
               await updatedOrder.save();
+              console.log("updated order final",updatedOrder);
+              console.log("updated order buynow final",updatedOrder.isBuynow);
                 // Clear user's cartItems after successful payment
-               if (req.user && req.user.userId)
+               if (req.user && req.user.userId && updatedOrder.isBuynow)
                 {
-                      try {
+                      try { 
                         await User.findByIdAndUpdate(
                           req.user.userId,
                           { $set: { cartItems: [] } }
@@ -161,28 +165,27 @@
 
                 //increase sales count and decrease stock
                for (const item of updatedOrder.cartItems) {
+                const totalQuantity =item.qty;
+                console.log("totalQuantity",totalQuantity);
                 try {
                   const product = await Product.findById(item.product);
                    if (!product) {
                     console.warn(`⚠️ Product not found: ${item.product}`);
                     continue;
                   }
+                   console.log("finaleproduct" ,product)
+                   const newStock = product.stock-totalQuantity ;
+                   const newSaleCount = product.salesCount +totalQuantity;
+                   console.log("newStock,newSaleCount",newStock,newSaleCount)
+                   
                   // Ensure numeric defaults
-                  if (typeof product.salesCount !== "number" || typeof product.stock !== "number") {
-                    await Product.findByIdAndUpdate(item.product, {
-                      $set: {
-                        salesCount: product.salesCount ?? 0,
-                        stock: product.stock ?? 0,
-                      },
-                    });
-                  }
-
-                 // ✅ Now safely increment salesCount by 1 and decrement stock by 1
-                 
-                await Product.findByIdAndUpdate(item.product, {
-                  $inc: { salesCount: 1, stock: -1 },
-                });
-                console.log('product stock count',product.stock,product.salesCount)
+                
+                    await Product.findByIdAndUpdate(
+                    item.product,
+                    { $set: { salesCount: newSaleCount, stock: newStock } },
+                    { new: true }
+                  )
+                console.log('product stock count',product)
                 console.log(`✅ Updated product ${item.product}: +1 sale, -1 stock`);
                 } catch (err) {
                   console.error("❌ Failed to update product stock/salesCount for product:", item.product, err);

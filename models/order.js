@@ -136,7 +136,10 @@ const orderSchema = new mongoose.Schema({
         default: 'cart',
     },
 
-    
+    isBuynow: {
+    type: Boolean,
+    default: false
+  }
 
 }, { timestamps: true });
 
