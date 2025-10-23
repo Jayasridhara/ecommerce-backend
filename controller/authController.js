@@ -71,7 +71,7 @@ const login = async (req, res) => {
         const token = jwt.sign(
             { userId: user._id },
             JWT_SECRET,
-            { expiresIn: '24h' }
+            { expiresIn: '6h' }
         );
         // set the token in the response header for httpOnly cookie
         
