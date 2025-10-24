@@ -27,9 +27,9 @@
 
   exports.paymentDetails = async (req, res) => {
     try {
-      const { items, successUrl, cancelUrl, currency = 'usd', orderId: providedOrderId, shippingAddress,headers,isBuyNow } = req.body;
+      const { items, successUrl, cancelUrl, currency = 'usd', orderId: providedOrderId, shippingAddress,headers } = req.body;
       console.log("paymentDetails items",items)
-      console.log("isBuynow",isBuyNow);
+      
       console.log('orderId:', providedOrderId);
       const userId = req.user ? req.user.userId : null
       console.log("user=ID",userId) // Prefer authenticated user, else use provided userId
@@ -100,7 +100,7 @@
                 amountPaid: "",
                 paidAt: Date.now()
             },
-            isBuynow:isBuyNow
+            
         };
 
         const order = Order.create(orderPayload);
@@ -149,9 +149,9 @@
               }
               await updatedOrder.save();
               console.log("updated order final",updatedOrder);
-              console.log("updated order buynow final",updatedOrder.isBuynow);
+              
                 // Clear user's cartItems after successful payment
-               if (req.user && req.user.userId && updatedOrder.isBuynow)
+               if (req.user && req.user.userId)
                 {
                       try { 
                         await User.findByIdAndUpdate(
@@ -178,15 +178,13 @@
                    const newSaleCount = product.salesCount +totalQuantity;
                    console.log("newStock,newSaleCount",newStock,newSaleCount)
                    
-                  // Ensure numeric defaults
-                
-                    await Product.findByIdAndUpdate(
-                    item.product,
+                    const updateProduct=await Product.findByIdAndUpdate(
+                    product._id,
                     { $set: { salesCount: newSaleCount, stock: newStock } },
                     { new: true }
                   )
-                console.log('product stock count',product)
-                console.log(`✅ Updated product ${item.product}: +1 sale, -1 stock`);
+                console.log('product stock count',updateProduct)
+                console.log(`✅ Updated product ${item}: +1 sale, -1 stock`);
                 } catch (err) {
                   console.error("❌ Failed to update product stock/salesCount for product:", item.product, err);
                 }

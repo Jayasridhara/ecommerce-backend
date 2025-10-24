@@ -124,8 +124,10 @@ exports.removeFromCart = async(req, res) => {
 exports.updateQty = async(req, res) => {
     try {
         const userId = req.user.userId;
+    
         const { productId, qty } = req.body;
-        console.log("qty", qty);
+        console.log("product id qty", productId,qty,userId);
+
         if (!mongoose.Types.ObjectId.isValid(productId)) return res.status(400).json({ message: 'Invalid productId' });
 
         const user = await User.findById(userId);
@@ -140,7 +142,7 @@ exports.updateQty = async(req, res) => {
 
         recalcCart(updatedUser);
         await updatedUser.save();
-
+        console.log()
         return res.status(200).json({ cart: updatedUser });
     } catch (err) {
         console.error('updateQty error', err);
