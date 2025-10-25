@@ -32,11 +32,12 @@ const register=async (req,res)=>{
             return res.status(500).json({message:'Failed to regsiter user'})
         }
         //send email
-      //  await sendEmail({
-      //       email,
-      //       subject: 'Welcome to Shop Verse',
-      //       message: `<p>Hello ${name},</p><p>Welcome to Shop Ease! We're glad to have you on board.</p><p>Best regards,<br/>Shop Ease Team</p>`
-      //       });
+       await sendEmail({
+            email,
+            subject: 'Welcome to Shop Verse',
+            message: `<p>Hello ${name},</p><p>Welcome to Shop Ease! We're glad to have you on board.</p><p>Best regards,<br/>Shop Ease Team</p>`
+            });
+      
       res.status(201).json({
               message:'User register successfully'
         })

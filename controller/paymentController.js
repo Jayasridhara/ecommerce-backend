@@ -191,48 +191,48 @@
               }
 
                 // //send email to user
-                // try{
-                //   const email=updatedOrder.buyer.email;
-                //   const subject="Order Payment Successful";
-                //   const message=`<h1>Dear ${updatedOrder.buyer.name},</h1>
-                //   <p>Your payment for order ${updatedOrder._id} has been successfully processed.</p>
-                //   <p>Order Details:</p>
-                //   <ul>
-                //   ${updatedOrder.cartItems.map(item => `<li>${item.name} - Quantity: ${item.qty} - Subtotal: $${item.subtotal}</li>`).join('')}
-                //   </ul>
-                //   <p>Total Amount Paid: $${updatedOrder.totalAmount}</p>
-                //   <p>Expected Delivery Date: ${new Date(updatedOrder.cartItems[0].deliveryExpectedAt).toDateString()}</p>
-                //   <p>Thank you for shopping with us!</p>`;
-                //   await sendEmail({email,subject,message});
-                // }catch(err){
-                //   console.error("Failed to send payment success email:", err);
-                // }
-                // //end email
-                // //send email to seller  
-                // try{
-                //   for(const item of updatedOrder.cartItems)
-                //   {
-                //     const email=item.seller.email;
-                //     const subject="Product Sold Notification";
-                //     const message=`<h1>Dear ${item.seller.name},</h1>
-                //     <p>Your product "${item.name}" has been sold in order ${updatedOrder._id}.</p>
-                //     <p>Quantity Sold: ${item.qty}</p>
-                //     <p>Total Amount Paid by Buyer: $${updatedOrder.totalAmount}</p>
-                //     <p>Buyer Shipping Address:</p>
-                //     <p>
-                //     ${updatedOrder.shippingAddress.fullName}<br/>
-                //     ${updatedOrder.shippingAddress.addressLine1}<br/>
-                //     ${updatedOrder.shippingAddress.addressLine2 ? updatedOrder.shippingAddress.addressLine2 + '<br/>' : ''}
-                //     ${updatedOrder.shippingAddress.city}, ${updatedOrder.shippingAddress.state} - ${updatedOrder.shippingAddress.postalCode}<br/>
-                //     ${updatedOrder.shippingAddress.country}<br/>
-                //     Phone: ${updatedOrder.shippingAddress.phone}
-                //     </p>
-                //     <p>Please prepare it for shipping.</p>`;
-                //     await sendEmail({email,subject,message});
-                //   }
-                // }catch(err){
-                //   console.error("Failed to send seller notification email:", err);
-                // }
+                try{
+                  const email=updatedOrder.buyer.email;
+                  const subject="Order Payment Successful";
+                  const message=`<h1>Dear ${updatedOrder.buyer.name},</h1>
+                  <p>Your payment for order ${updatedOrder._id} has been successfully processed.</p>
+                  <p>Order Details:</p>
+                  <ul>
+                  ${updatedOrder.cartItems.map(item => `<li>${item.name} - Quantity: ${item.qty} - Subtotal: $${item.subtotal}</li>`).join('')}
+                  </ul>
+                  <p>Total Amount Paid: $${updatedOrder.totalAmount}</p>
+                  <p>Expected Delivery Date: ${new Date(updatedOrder.cartItems[0].deliveryExpectedAt).toDateString()}</p>
+                  <p>Thank you for shopping with us!</p>`;
+                  await sendEmail({email,subject,message});
+                }catch(err){
+                  console.error("Failed to send payment success email:", err);
+                }
+                //end email
+                //send email to seller  
+                try{
+                  for(const item of updatedOrder.cartItems)
+                  {
+                    const email=item.seller.email;
+                    const subject="Product Sold Notification";
+                    const message=`<h1>Dear ${item.seller.name},</h1>
+                    <p>Your product "${item.name}" has been sold in order ${updatedOrder._id}.</p>
+                    <p>Quantity Sold: ${item.qty}</p>
+                    <p>Total Amount Paid by Buyer: $${updatedOrder.totalAmount}</p>
+                    <p>Buyer Shipping Address:</p>
+                    <p>
+                    ${updatedOrder.shippingAddress.fullName}<br/>
+                    ${updatedOrder.shippingAddress.addressLine1}<br/>
+                    ${updatedOrder.shippingAddress.addressLine2 ? updatedOrder.shippingAddress.addressLine2 + '<br/>' : ''}
+                    ${updatedOrder.shippingAddress.city}, ${updatedOrder.shippingAddress.state} - ${updatedOrder.shippingAddress.postalCode}<br/>
+                    ${updatedOrder.shippingAddress.country}<br/>
+                    Phone: ${updatedOrder.shippingAddress.phone}
+                    </p>
+                    <p>Please prepare it for shipping.</p>`;
+                    await sendEmail({email,subject,message});
+                  }
+                }catch(err){
+                  console.error("Failed to send seller notification email:", err);
+                }
         }
         else
         {
